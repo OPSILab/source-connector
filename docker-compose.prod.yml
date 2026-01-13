@@ -1,0 +1,86 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB:
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  source_connector:
+    image: source_connector
+    container_name: source_connector
+    restart: always
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./config.js:/app/config.js
+
+  mongodb:
+    image: mongo:4.4
+    container_name: query-engine-suite-mongo
+    ports:
+      - 22000:27017
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+
+  minio:
+    image: minio/minio
+    #restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    #volumes:
+    #  - ./minio-storage:/data
+    environment:
+      MINIO_ROOT_USER:
+      MINIO_ROOT_PASSWORD:
+      #MINIO_BROWSER_REDIRECT_URL: http://localhost:9001/minio/
+      MINIO_IDENTITY_OPENID_CONFIG_URL:
+      MINIO_BROWSER_REDIRECT_URL: "http://localhost:9001"
+      MINIO_IDENTITY_OPENID_CLIENT_ID:
+      MINIO_IDENTITY_OPENID_CLIENT_SECRET:
+      MINIO_IDENTITY_OPENID_SCOPES: "openid profile email"
+      MINIO_IDENTITY_OPENID_CLAIM_NAME: policy
+      MINIO_IDENTITY_OPENID_REDIRECT_URI: http://localhost:9001/oauth_callback
+    command: server --console-address ":9001" /data
+
+  source_connector-dev-container:
+      image: source_connector_dev_image
+      build:
+        context: .
+        dockerfile: ./Dev-container
+      container_name: source_connector-dev-container
+      ports:
+        - "3000:3000"
+      #volumes:
+      #- .:/workspace:cached
+      command: sleep infinity
+
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: libretranslate
+    restart: unless-stopped
+    environment:
+      - ALLOWED_HOSTS=*
+    ports:
+      - "5000:5000"
+
+  redis:
+    image: redis:7-alpine
+    container_name: libre_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+  mongodb_data:

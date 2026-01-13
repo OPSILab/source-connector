@@ -1,0 +1,36 @@
+{
+  "name": "sql",
+  "version": "1.0.0",
+  "description": "sql",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test",
+    "start": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "none"
+  },
+  "keywords": [
+    "sql"
+  ],
+  "author": "gabriele percoco",
+  "license": "ISC",
+  "dependencies": {
+    "apollo-server-express": "^3.13.0",
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "minio": "^8.0.0",
+    "mongoose": "^8.3.4",
+    "nodemon": "^3.1.0",
+    "percocologger": "^1.0.7",
+    "ioredis": "^5.3.2",
+    "pg": "^8.11.5"
+  },
+  "stashDependencies": {
+    "urlencode": "^2.0.0"
+  }
+}

@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+
+  source-connector:
+    image: engineeringopsilab/source-connector
+    pull_policy: always
+    build:
+      context: https://github.com/BeOpen-project/minio-sql-connector.git
+      dockerfile: ./Source-Connector/source-connector-dockerfile
+    container_name: source-connector
+    restart: always
+    ports:
+      - "3001:3001"  
+    volumes:
+      - ./config.docker.js:/app/config.js
+
+ 
