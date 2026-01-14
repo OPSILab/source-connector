@@ -1,0 +1,52 @@
+name: Sync Source connector to query engine suite
+
+on:
+  push:
+    branches:
+      - '**'  
+    paths-ignore:
+      - '.github/**'
+  workflow_dispatch:
+
+jobs:
+  push-subtree:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source connector
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  
+
+      - name: Exit if commit is from bot
+        run: |
+          AUTHOR=$(git log -1 --pretty=format:'%an')
+          if [[ "$AUTHOR" == "github-actions[bot]" ]]; then
+            echo "Last commit was made by bot, exiting."
+            exit 0
+          fi
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.QUERY_ENGINE_SUITE_KEY }}
+
+      - name: Set Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add padre remote
+        run: git remote add qe-suite-remote git@github.com:OPSILab/query-engine-suite.git || echo "Remote already exists"
+
+      - name: Set branch name
+        run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+
+      - name: Push subtree / create branch if needed
+        run: |
+          if git ls-remote --heads qe-suite-remote ${{ env.BRANCH_NAME }} | grep ${{ env.BRANCH_NAME }}; then
+            echo "Branch exists on remote, pushing subtree..."
+            git subtree push --prefix=Source-Connector qe-suite-remote ${{ env.BRANCH_NAME }}
+          else
+            echo "Branch does not exist on remote, creating branch..."
+            git push qe-suite-remote HEAD:refs/heads/${{ env.BRANCH_NAME }}
+          fi
