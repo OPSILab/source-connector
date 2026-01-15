@@ -3,44 +3,56 @@ name: Sync Source-Connector to Query Engine Suite
 on:
   push:
     branches:
-      - '**'   # Trigger su tutti i branch
+      - '**'   # Trigger su tutti i branch della repo figlia
   workflow_dispatch:
 
 jobs:
   push-to-parent:
     runs-on: ubuntu-latest
     steps:
+      # Checkout della repo figlia
       - name: Checkout Source-Connector
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Serve per avere tutta la storia dei commit
 
+      # Configurazione SSH per push sulla repo padre
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.QUERY_ENGINE_SUITE_KEY }}
 
+      # Configurazione utente Git
       - name: Set Git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      # Recupera il nome del branch
       - name: Set branch name
         run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
 
+      # Clona la repo padre
       - name: Clone parent repo
         run: |
           git clone git@github.com:OPSILab/query-engine-suite.git parent-repo
           cd parent-repo
+          # Se il branch esiste lo checkout, altrimenti lo crea
           git checkout -b ${{ env.BRANCH_NAME }} || git checkout ${{ env.BRANCH_NAME }}
 
+      # Integra i commit della repo figlia nella cartella subtree (preservando la storia)
       - name: Pull Source-Connector commits into parent repo
         run: |
           cd parent-repo
-          git remote add source-connector ../  # il path locale della repo figlia
+          git remote add source-connector ../  # percorso locale della repo figlia
           git fetch source-connector ${{ env.BRANCH_NAME }}
-          git subtree pull --prefix=Source-Connector source-connector ${{ env.BRANCH_NAME }} --allow-unrelated-histories
 
+          # Primo tentativo: subtree pull senza squash
+          git subtree pull --prefix=Source-Connector source-connector ${{ env.BRANCH_NAME }} || \
+          # Se le storie sono completamente separate, fai merge con commit di merge
+          git merge --allow-unrelated-histories source-connector/${{ env.BRANCH_NAME }} -m "Merge Source-Connector"
+
+      # Pusha le modifiche sul branch della repo padre
       - name: Push updates to parent repo
         run: |
           cd parent-repo
