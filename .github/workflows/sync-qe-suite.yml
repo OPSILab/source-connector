@@ -1,19 +1,19 @@
-name: Sync Query Engine suite
+name: Sync Source-Connector to Query Engine Suite
 
 on:
   push:
     branches:
-      - '**'             
-  workflow_dispatch:       
+      - '**'   # Trigger su tutti i branch
+  workflow_dispatch:
 
 jobs:
-  push-subtrees:
+  push-to-parent:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout fullstack
+      - name: Checkout Source-Connector
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Serve per avere tutta la storia dei commit
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.1
@@ -28,21 +28,20 @@ jobs:
       - name: Set branch name
         run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
 
-      - name: Clone suite
+      - name: Clone parent repo
         run: |
-          cp -r ./ ../tmp
-          cd ..
-          #ls
-          #ls ./tmp
-          rm -r ./tmp/.git
-          git clone git@github.com:OPSILab/query-engine-suite.git
-          cd query-engine-suite
-          git remote add sc-remote git@github.com:OPSILab/source-connector.git || echo "Remote already exists"
-          mv ../tmp ./Source-Connector
-          if git ls-remote --heads origin ${{ env.BRANCH_NAME }} | grep -q ${{ env.BRANCH_NAME }}; then
-            echo "Branch exists on remote, pushing subtree..."
-            git push origin ${{ env.BRANCH_NAME }}
-          else
-            echo "Branch does not exist on remote, creating branch..."
-            git push origin HEAD:refs/heads/${{ env.BRANCH_NAME }}
-          fi    
+          git clone git@github.com:OPSILab/query-engine-suite.git parent-repo
+          cd parent-repo
+          git checkout -b ${{ env.BRANCH_NAME }} || git checkout ${{ env.BRANCH_NAME }}
+
+      - name: Pull Source-Connector commits into parent repo
+        run: |
+          cd parent-repo
+          git remote add source-connector ../  # il path locale della repo figlia
+          git fetch source-connector ${{ env.BRANCH_NAME }}
+          git subtree pull --prefix=Source-Connector source-connector ${{ env.BRANCH_NAME }} --allow-unrelated-histories
+
+      - name: Push updates to parent repo
+        run: |
+          cd parent-repo
+          git push origin ${{ env.BRANCH_NAME }}
