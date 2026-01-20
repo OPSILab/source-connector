@@ -4,6 +4,7 @@ const Datapoints = require("../models/Datapoint")
 const config = require('../../config')
 const minioWriter = require("../../inputConnectors/minioConnector")
 const axios = require('axios')
+const fs = require('fs')
 const { updateJWT } = require('../../utils/keycloak')
 let bearerToken
 updateJWT().then(token => {
@@ -14,6 +15,77 @@ updateJWT().then(token => {
 const path = require('path');
 let attrWithUrl = config.orion?.attrWithUrl || "datasetUrl"
 require('../../inputConnectors/apiConnector')
+
+async function insertResponseInDB(size) {
+
+    let stats
+    let sizeRead = 0
+    logger.info(`Attesa del file di stream di dimensione minima: ${size} bytes`);
+    //let counter = 0
+    while (!stats?.size || stats?.size < 50000000) {
+        stats = fs.statSync(config.streamPath || "/app/shared-data/stream.json");
+        sizeRead = (stats.size / 1024) / 1024
+        logger.info(`Dimensione del file di stream: ${sizeRead} Megabyte`);
+        /*counter++
+        if (counter > 10000000) {
+            logger.error("File di stream non trovato dopo numerosi tentativi, esco dalla funzione di inserimento.");
+            return;
+        }*/
+    }
+
+    
+    const stream2 = fs.createReadStream(config.nameStream || "/app/shared-data/stream.json", { encoding: "utf-8" });
+    let buffer = "";
+    let depth = 0; // conta le parentesi graffe
+    let inObject = false;
+
+    logger.debug("Inizio inserimento datapoints nel database...");
+    let tempArray = [];
+    for await (const chunk of stream2) {
+        //logger.debug("Lettura chunk di dati...");
+        for (const char of chunk) {
+            //logger.debug(`Elaborazione carattere: ${char}`);
+            if (char === "{") {
+                //logger.debug("Inizio di un nuovo oggetto JSON rilevato.");
+                if (!inObject) inObject = true;
+                depth++;
+            }
+
+            //logger.debug(`Profondità attuale delle parentesi graffe: ${depth}`);
+            if (inObject) buffer += char;
+
+            //logger.debug(`Buffer attuale: ${buffer}`);
+            if (char === "}") {
+                //logger.debug("Fine di un oggetto JSON rilevata.");
+                depth--;
+                if (depth === 0 && inObject) {
+                    //logger.debug("Oggetto JSON completo rilevato, procedo con l'inserimento nel database.");
+                    // oggetto completo
+                    const obj = JSON.parse(buffer);
+                    //logger.debug(`Oggetto JSON da inserire: ${JSON.stringify(obj)}`);
+                    //const DatapointModel = await Datapoints.getDatapointModel();
+                    //const datapoint = new DatapointModel(obj);
+                    tempArray.push(obj);
+                    if (tempArray.length >= config.batch) {
+                        await Datapoints.insertMany(tempArray);
+                        tempArray = [];
+                        logger.debug(config.batch + " Datapoints salvati nel database.");
+                    }
+                    //await Datapoints.insertMany([obj]);
+                    //logger.debug("Datapoint salvato nel database.");
+                    buffer = "";
+                    inObject = false;
+                }
+            }
+        }
+    }
+    try {
+        fs.unlinkSync(config.nameStream || "/app/shared-data/stream.json");
+        logger.info('File cancellato con successo!');
+    } catch (err) {
+        logger.error('Errore durante la cancellazione:', err);
+    }
+}
 
 module.exports = {
 
@@ -128,17 +200,12 @@ module.exports = {
                 //logger.info(response.data.lenght)
 
                 try {
-                    await Datapoints.insertMany(response.data)//.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+                    logger.info("Inserting datapoints into DB...");
+                    logger.info(response.data[0], " MB")
+                    await insertResponseInDB(response.data[0])//.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
                 }
                 catch (error) {
-                    logger.error("Error inserting datapoints:", error.toString())
-                    for (let insertingObject of response.data)
-                        try {
-                            Datapoints.insertMany([insertingObject])
-                        }
-                        catch (innerError) {
-                            logger.error("Error inserting datapoint:", innerError.toString())
-                        }
+                    logger.error("Error inserting datapoints:", error)
                 }
                 /*for (let i in response.data)
                     await minioWriter.insertInDBs(response.data[i], {
