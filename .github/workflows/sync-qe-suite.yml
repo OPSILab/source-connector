@@ -1,9 +1,9 @@
 name: Sync Source Connector
 
 on:
-  push:
-    branches:
-      - '**'             
+  push:    
+    branches-ignore:
+      - main       
   workflow_dispatch:       
 
 jobs:
@@ -14,14 +14,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Exit if commit is from bot
-        run: |
-          AUTHOR=$(git log -1 --pretty=format:'%an')
-          if [[ "$AUTHOR" == "github-actions[bot]" ]]; then
-            echo "Last commit was made by bot, exiting."
-            exit 0
-          fi
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.1
