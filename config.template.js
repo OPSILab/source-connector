@@ -31,8 +31,8 @@ module.exports = {
     attrWithUrl: "datasetUrl",
     orionBaseUrl: "http://localhost:1027",
     notificationUrl: "http://host.docker.internal:3000/api/orion/subscribe",
-    fiwareService: "service",
-    fiwareServicePath: "/service"
+    fiwareService: "",
+    fiwareServicePath: ""
   },
   logLevel: "info",
   syncInterval: 86400000,

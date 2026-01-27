@@ -33,7 +33,7 @@ async function insertResponseInDB(size) {
         }*/
     }
 
-    
+
     const stream2 = fs.createReadStream(config.nameStream || "/app/shared-data/stream.json", { encoding: "utf-8" });
     let buffer = "";
     let depth = 0; // conta le parentesi graffe
@@ -194,8 +194,13 @@ module.exports = {
                     }
                     catch (error) {
                         logger.error("Error fetching mapped data from API Connector:", error.response?.data || error.message);
-                        bearerToken = await updateJWT(true);
-                        retry--
+                        try {
+                            bearerToken = await updateJWT(true);
+                            retry--
+                        } catch (e) {
+                            logger.error("Error updating JWT:", e);
+                            logger.error(e.request)
+                        }
                     }
                 //logger.info(response.data.lenght)
 

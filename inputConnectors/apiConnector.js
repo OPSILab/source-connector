@@ -61,8 +61,8 @@ if (config.orion.subscribe)
     createOrionSubscription({
         orionBaseUrl: config.orion?.orionBaseUrl || 'http://localhost:1027',
         notificationUrl: config.orion?.notificationUrl || 'http://host.docker.internal:3000/api/orion/subscribe',
-        fiwareService: config.orion?.fiwareService || "service",
-        fiwareServicePath: config.orion?.fiwareServicePath || "/service"
+        fiwareService: config.orion?.fiwareService,
+        fiwareServicePath: config.orion?.fiwareServicePath
     }).then(sub => {
         if (sub != "Already existing subscription found for the same notification URL.")
             logger.info("Orion subscription created: " + sub)
@@ -72,11 +72,32 @@ if (config.orion.subscribe)
     })
 
 async function getSubscriptions() {
-    return (await axios.get((config.orion.orionBaseUrl || 'http://localhost:1027') + getEndpointVersionApi(), { headers: { 'Fiware-Service': config.orion.fiwareService || 'service', 'Fiware-ServicePath': config.orion.fiwareServicePath || '/service' } })).data
+    return (await axios.get((config.orion.orionBaseUrl || 'http://localhost:1027') + getEndpointVersionApi(),
+        (config?.orion?.fiwareService ?
+            {
+                headers:
+                {
+                    'Fiware-Service': config.orion.fiwareService || 'service',
+                    'Fiware-ServicePath': config.orion.fiwareServicePath || '/service'
+                }
+            }
+            :
+            {}
+        ))).data
 }
 
 async function deleteSubscription(subId) {
-    return (await axios.delete(`${(config.orion.orionBaseUrl || 'http://localhost:1027')}${getEndpointVersionApi(subId)}/${subId}`, { headers: { 'Fiware-Service': config.orion.fiwareService || 'service', 'Fiware-ServicePath': config.orion.fiwareServicePath || '/service' } })).data
+    return (await axios.delete(`${(config.orion.orionBaseUrl || 'http://localhost:1027')}${getEndpointVersionApi(subId)}/${subId}`, (config?.orion?.fiwareService ?
+            {
+                headers:
+                {
+                    'Fiware-Service': config.orion.fiwareService || 'service',
+                    'Fiware-ServicePath': config.orion.fiwareServicePath || '/service'
+                }
+            }
+            :
+            {}
+        ))).data
 }
 
 function typesCheck(subTypes) {
