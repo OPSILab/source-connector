@@ -191,6 +191,14 @@ module.exports = {
                                 }
                             });
                         retry -= 2
+                        try {
+                            logger.info("Inserting datapoints into DB...");
+                            logger.info(response.data[0], " MB")
+                            await insertResponseInDB(response.data[0])//.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+                        }
+                        catch (error) {
+                            logger.error("Error inserting datapoints:", error)
+                        }
                     }
                     catch (error) {
                         logger.error("Error fetching mapped data from API Connector:", error.response?.data || error.message);
@@ -199,19 +207,12 @@ module.exports = {
                             retry--
                         } catch (e) {
                             logger.error("Error updating JWT:", e);
-                            logger.error(e.request)
+                            retry--
                         }
                     }
                 //logger.info(response.data.lenght)
 
-                try {
-                    logger.info("Inserting datapoints into DB...");
-                    logger.info(response.data[0], " MB")
-                    await insertResponseInDB(response.data[0])//.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
-                }
-                catch (error) {
-                    logger.error("Error inserting datapoints:", error)
-                }
+
                 /*for (let i in response.data)
                     await minioWriter.insertInDBs(response.data[i], {
                         name: response.data[i].id || mapID + '-' + path.basename((new URL(urlValue)).pathname) + i,
