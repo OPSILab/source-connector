@@ -71,6 +71,7 @@ services:
     restart: unless-stopped
     environment:
       - ALLOWED_HOSTS=*
+      - LT_LOAD_ONLY=en,it,bg,fi,sl
     ports:
       - "5000:5000"
 
