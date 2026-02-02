@@ -30,7 +30,7 @@ module.exports = {
     deleteAllDuplicateSubscriptions: true,
     attrWithUrl: "datasetUrl",
     orionBaseUrl: "http://localhost:1027",
-    notificationUrl: "http://host.docker.internal:3000/api/orion/subscribe",
+    notificationUrl: "http://localhost:3000/api/orion/subscribe",
     fiwareService: "",
     fiwareServicePath: ""
   },
@@ -43,7 +43,7 @@ module.exports = {
   port: 3000,
   updateOwner: "later",
   writeLogsOnFile: true,
-  mongo: "mongodb://localhost:27017/Minio-Mongo", // mongo url
+  mongo: "mongodb://localhost:22000/Minio-Mongo", // mongo url
   authConfig: {
     idmHost: "https://platform.beopendep.it/auth",
     clientId: "",
