@@ -18,7 +18,7 @@ const path = require("path");
 let attrWithUrl = config.orion?.attrWithUrl || "datasetUrl";
 require("../../inputConnectors/apiConnector");
 
-async function insertResponseInDB(size) {
+async function insertResponseInDB(size, urlValue) {
   let stats;
   let sizeRead = 0;
   logger.info(`Attesa del file di stream di dimensione minima: ${size} bytes`);
@@ -198,8 +198,24 @@ module.exports = {
             retry -= 2;
             try {
               logger.info("Inserting datapoints into DB...");
-              logger.info(response.data[0], " MB");
-              await insertResponseInDB(response.data[0]); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+              logger.info(response.data);
+              let outputId = response.data.id
+              let lastId
+              let purged = false
+              for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) {
+                //while (response.data[0] || response.data.id) {
+                logger.info(response.data.status)
+                response = await axios.get((config.sessionEdnpoint || "http://localhost:5500/api/session?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
+                  headers: {
+                    Authorization: `Bearer ${bearerToken}`
+                  }
+                })
+                if (!purged)
+                  await Datapoints.deleteMany({survey: response.data[0].survey});
+                await Datapoints.insertMany(response.data); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+                lastId = response.data[response.data.length - 1]?._id
+                purged = true;
+              }
             } catch (error) {
               logger.error("Error inserting datapoints:", error);
             }

@@ -1,6 +1,6 @@
 ﻿const axios = require("axios");
 const config = require("../config.js")
-const keycloakBaseUrl = config.authConfig.idmHost + "/realms/smartera";
+const keycloakBaseUrl = config.authConfig.idmHost + "/realms/" + (config.authConfig.authRealm || "master")
 const { clientId, username, password } = config.authConfig;
 const fs = require('fs');
 const path = './token.js';
