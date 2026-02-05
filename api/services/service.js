@@ -18,77 +18,6 @@ const path = require("path");
 let attrWithUrl = config.orion?.attrWithUrl || "datasetUrl";
 require("../../inputConnectors/apiConnector");
 
-async function insertResponseInDB(size, urlValue) {
-  let stats;
-  let sizeRead = 0;
-  logger.info(`Attesa del file di stream di dimensione minima: ${size} bytes`);
-  //let counter = 0
-  while (!stats?.size || stats?.size < 50000000) {
-    stats = fs.statSync(config.streamPath || "/app/shared-data/stream.json");
-    sizeRead = stats.size / 1024 / 1024;
-    logger.info(`Dimensione del file di stream: ${sizeRead} Megabyte`);
-    /*counter++
-        if (counter > 10000000) {
-            logger.error("File di stream non trovato dopo numerosi tentativi, esco dalla funzione di inserimento.");
-            return;
-        }*/
-  }
-
-  const stream2 = fs.createReadStream(
-    config.nameStream || "/app/shared-data/stream.json",
-    { encoding: "utf-8" }
-  );
-  let buffer = "";
-  let depth = 0; // conta le parentesi graffe
-  let inObject = false;
-
-  logger.debug("Inizio inserimento datapoints nel database...");
-  let tempArray = [];
-  for await (const chunk of stream2) {
-    //logger.debug("Lettura chunk di dati...");
-    for (const char of chunk) {
-      //logger.debug(`Elaborazione carattere: ${char}`);
-      if (char === "{") {
-        //logger.debug("Inizio di un nuovo oggetto JSON rilevato.");
-        if (!inObject) inObject = true;
-        depth++;
-      }
-
-      //logger.debug(`Profondità attuale delle parentesi graffe: ${depth}`);
-      if (inObject) buffer += char;
-
-      //logger.debug(`Buffer attuale: ${buffer}`);
-      if (char === "}") {
-        //logger.debug("Fine di un oggetto JSON rilevata.");
-        depth--;
-        if (depth === 0 && inObject) {
-
-          const obj = JSON.parse(buffer);
-          obj.fromUrl = urlValue; // Importante per l'hash
-
-          tempArray.push(obj);
-
-          if (tempArray.length >= config.batch) {
-            await Datapoints.upsertMany(tempArray);
-
-            tempArray = [];
-            logger.debug(`${config.batch} record elaborati.`);
-          }
-
-          buffer = "";
-          inObject = false;
-        }
-      }
-    }
-  }
-  try {
-    fs.unlinkSync(config.nameStream || "/app/shared-data/stream.json");
-    logger.info("File cancellato con successo!");
-  } catch (err) {
-    logger.error("Errore durante la cancellazione:", err);
-  }
-}
-
 module.exports = {
   notifyPath: async (req, res) => {
     logger.info({ body: JSON.stringify(req.body) });
@@ -212,7 +141,14 @@ module.exports = {
                 })
                 if (!purged)
                   await Datapoints.deleteMany({survey: response.data[0].survey});
-                await Datapoints.insertMany(response.data); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+                await Datapoints.insertMany(response.data.map(
+                  d => {
+                    return {
+                      ...d,
+                      fromUrl : urlValue
+                    }
+                  }
+                )); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
                 lastId = response.data[response.data.length - 1]?._id
                 purged = true;
               }
