@@ -131,7 +131,7 @@ module.exports = {
               let outputId = response.data[response.data.length - 1].MAPPING_REPORT.outputId
               let lastId
               let purged = false
-              for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) {
+              for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) { // Loop per gestire i chunk
                 //while (response.data[0] || response.data.id) {
                 logger.info(response.data.status)
                 response = await axios.get((config.sessionEdnpoint || "http://localhost:5500/api/output?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
@@ -139,23 +139,19 @@ module.exports = {
                     Authorization: `Bearer ${bearerToken}`
                   }
                 })
-                if (!purged)
-                  try {
-                    await Datapoints.deleteMany({ survey: response.data[0].survey });
-                  } catch (e) {
-                    logger.error("Error purging old datapoints:", e);
-                    logger.error(response.data)
-                  }
-                await Datapoints.insertMany(response.data.map(
-                  d => {
+                if (response.data[0]) {
+                  if (!purged)  
+                    await Datapoints.deleteMany({ survey: response.data[0].survey }); // Cancellazione preliminare
+                  const dataToInsert = response.data.map((d) => {  // Preparazione dei dati
                     return {
                       ...d,
-                      fromUrl: urlValue
-                    }
-                  }
-                )); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
-                lastId = response.data[response.data.length - 1]?._id
-                purged = true;
+                      fromUrl: urlValue,
+                    };
+                  });
+                  await Datapoints.upsertMany(dataToInsert); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+                  lastId = response.data[response.data.length - 1]?._id // Gestione indici per il prossimo loop
+                  purged = true;
+                }
               }
             } catch (error) {
               logger.error("Error inserting datapoints:", error);
