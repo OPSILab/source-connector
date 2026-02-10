@@ -128,24 +128,29 @@ module.exports = {
             try {
               logger.info("Inserting datapoints into DB...");
               logger.info(response.data);
-              let outputId = response.data.id
+              let outputId = response.data[response.data.length - 1].MAPPING_REPORT.outputId
               let lastId
               let purged = false
               for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) {
                 //while (response.data[0] || response.data.id) {
                 logger.info(response.data.status)
-                response = await axios.get((config.sessionEdnpoint || "http://localhost:5500/api/session?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
+                response = await axios.get((config.sessionEdnpoint || "http://localhost:5500/api/output?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
                   headers: {
                     Authorization: `Bearer ${bearerToken}`
                   }
                 })
                 if (!purged)
-                  await Datapoints.deleteMany({survey: response.data[0].survey});
+                  try {
+                    await Datapoints.deleteMany({ survey: response.data[0].survey });
+                  } catch (e) {
+                    logger.error("Error purging old datapoints:", e);
+                    logger.error(response.data)
+                  }
                 await Datapoints.insertMany(response.data.map(
                   d => {
                     return {
                       ...d,
-                      fromUrl : urlValue
+                      fromUrl: urlValue
                     }
                   }
                 )); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
