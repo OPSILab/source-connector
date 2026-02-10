@@ -17,7 +17,7 @@ const datapointSchema = new mongoose.Schema(
     timestamp: { type: String, index: true },
     dimensions: { type: Object },
     value: Number,
-    d_hash: { type: String, unique: true }, // Identificatore unico per evitare duplicati
+    dupl_hash: { type: String, unique: true }, // Identificatore unico per evitare duplicati
   },
   {
     strict: false,
@@ -37,7 +37,10 @@ datapointSchema.pre("save", function (next) {
 
 // Funzione per generare l'hash unico (usata nell'inserimento massivo)
 const generateHash = (doc) => {
-  const dims = doc.dimensions || {};
+  // Gestiamo sia se arriva come documento Mongoose sia come oggetto puro
+  const target = doc._doc || doc;
+
+  const dims = target.dimensions || {};
   const sortedKeys = Object.keys(dims)
     .sort()
     .reduce((acc, key) => {
@@ -45,13 +48,22 @@ const generateHash = (doc) => {
       return acc;
     }, {});
 
-  // Usiamo la survey pulita per l'hash
-  const s = cleanSurveyName(doc.survey);
+  const s = cleanSurveyName(target.survey);
+
+  // COSTRUZIONE STRINGA DI HASH
   const stringToHash =
-    (doc.fromUrl || "") +
-    (doc.timestamp || "") +
+    (target.fromUrl || "") +
+    "|" + 
+    (target.timestamp || "") +
+    "|" +
+    (target.region || "") +
+    "|" + 
     s +
+    "|" +
+    (target.value !== undefined ? target.value : Date.now()) +
+    "|" + 
     JSON.stringify(sortedKeys);
+
   return crypto.createHash("md5").update(stringToHash).digest("hex");
 };
 
@@ -65,11 +77,11 @@ datapointSchema.statics.upsertMany = async function (datapoints) {
     const cleanedDoc = {
       ...doc,
       survey: cleanSurveyName(doc.survey),
-      d_hash: hash,
+      dupl_hash: hash,
     };
     return {
       updateOne: {
-        filter: { d_hash: hash },
+        filter: { dupl_hash: hash },
         update: { $set: cleanedDoc },
         upsert: true,
       },

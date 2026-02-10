@@ -128,28 +128,53 @@ module.exports = {
             try {
               logger.info("Inserting datapoints into DB...");
               logger.info(response.data);
-              let outputId = response.data.id
-              let lastId
-              let purged = false
-              for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) {
-                //while (response.data[0] || response.data.id) {
-                logger.info(response.data.status)
-                response = await axios.get((config.sessionEdnpoint || "http://localhost:5500/api/session?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
-                  headers: {
-                    Authorization: `Bearer ${bearerToken}`
+              let outputId = response.data.id;
+              let lastId;
+              let purged = false;
+
+              // Loop per gestire i chunk
+              for (
+                let chunkIndex = 0;
+                response.data[0] || response.data.id;
+                chunkIndex++
+              ) {
+                logger.info(response.data.status);
+
+                response = await axios.get(
+                  (config.sessionEdnpoint ||
+                    "http://localhost:5500/api/session?") +
+                    "id=" +
+                    outputId +
+                    "&lastId=" +
+                    lastId +
+                    "&index=" +
+                    chunkIndex,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${bearerToken}`,
+                    },
                   }
-                })
-                if (!purged)
-                  await Datapoints.deleteMany({survey: response.data[0].survey});
-                await Datapoints.insertMany(response.data.map(
-                  d => {
-                    return {
-                      ...d,
-                      fromUrl : urlValue
-                    }
-                  }
-                )); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
-                lastId = response.data[response.data.length - 1]?._id
+                );
+
+                // Cancellazione preliminare
+                if (!purged && response.data.length > 0) {
+                  await Datapoints.deleteMany({
+                    survey: response.data[0].survey,
+                  });
+                }
+
+                // Preparazione dei dati
+                const dataToInsert = response.data.map((d) => {
+                  return {
+                    ...d,
+                    fromUrl: urlValue,
+                  };
+                });
+
+                await Datapoints.upsertMany(dataToInsert);
+
+                // Gestione indici per il prossimo loop
+                lastId = response.data[response.data.length - 1]?._id;
                 purged = true;
               }
             } catch (error) {
