@@ -40,28 +40,24 @@ const generateHash = (doc) => {
   // Gestiamo sia se arriva come documento Mongoose sia come oggetto puro
   const target = doc._doc || doc;
 
-  const dims = target.dimensions || {};
-  const sortedKeys = Object.keys(dims)
-    .sort()
-    .reduce((acc, key) => {
-      acc[key] = dims[key];
-      return acc;
-    }, {});
+  const dims = target.dimensions || [];
+  const sortedDims = [...dims].sort();
+  const sortedKeys = sortedDims.join("|");
 
   const s = cleanSurveyName(target.survey);
 
   // COSTRUZIONE STRINGA DI HASH
   const stringToHash =
     (target.fromUrl || "") +
-    "|" + 
+    "|" +
     (target.timestamp || "") +
     "|" +
     (target.region || "") +
-    "|" + 
+    "|" +
     s +
     "|" +
     (target.value !== undefined ? target.value : Date.now()) +
-    "|" + 
+    "|" +
     JSON.stringify(sortedKeys);
 
   return crypto.createHash("md5").update(stringToHash).digest("hex");
