@@ -134,7 +134,7 @@ module.exports = {
               for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) { // Loop per gestire i chunk
                 //while (response.data[0] || response.data.id) {
                 logger.info(response.data.status)
-                response = await axios.get((config.sessionEdnpoint || "http://localhost:5500/api/output?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
+                response = await axios.get((config.sessionEndpoint || "http://localhost:5500/api/output?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
                   headers: {
                     Authorization: `Bearer ${bearerToken}`
                   }
