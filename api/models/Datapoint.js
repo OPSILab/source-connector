@@ -17,7 +17,7 @@ const datapointSchema = new mongoose.Schema(
     timestamp: { type: String, index: true },
     dimensions: { type: Object },
     value: Number,
-    dupl_hash: { type: String, unique: true }, // Identificatore unico per evitare duplicati
+    dupl_hash: { type: String }, // Identificatore unico per evitare duplicati
   },
   {
     strict: false,
