@@ -127,86 +127,30 @@ module.exports = {
             retry -= 2;
             try {
               logger.info("Inserting datapoints into DB...");
-
-              if (!response.data || response.data.length === 0) {
-                throw new Error("No data received from initial response");
-              }
-
-              // Recupero dell'outputId per il fetching a chunk
-              const lastElement = response.data[response.data.length - 1];
-              const outputId =
-                lastElement?.MAPPING_REPORT?.outputId || response.data.id;
-
-              if (!outputId) {
-                throw new Error("Could not find outputId in response");
-              }
-
-              let lastId;
-              let purged = false;
-              let hasMoreData = true;
-              let chunkIndex = 0;
-
-              while (hasMoreData) {
-                logger.info(`Fetching chunk ${chunkIndex}...`);
-
-                const chunkResponse = await axios.get(
-                  (config.sessionEdnpoint ||
-                    "http://localhost:8081/api/output?") +
-                    "id=" +
-                    outputId +
-                    "&lastId=" +
-                    lastId +
-                    "&index=" +
-                    chunkIndex,
-                  {
-                    headers: { Authorization: `Bearer ${bearerToken}` },
+              logger.info(response.data);
+              let outputId = response.data[response.data.length - 1].MAPPING_REPORT.outputId
+              let lastId
+              let purged = false
+              for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) { // Loop per gestire i chunk
+                //while (response.data[0] || response.data.id) {
+                logger.info(response.data.status)
+                response = await axios.get((config.sessionEndpoint || "http://localhost:5500/api/output?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
+                  headers: {
+                    Authorization: `Bearer ${bearerToken}`
                   }
-                );
-
-                const docs = chunkResponse.data;
-
-                // --- LOG DI DEBUG INIZIO ---
-                logger.info(`--- DEBUG CHUNK ${chunkIndex} ---`);
-                logger.info(`Status Code: ${chunkResponse.status}`);
-                logger.info(`Tipo di docs: ${typeof chunkResponse.data}`);
-                logger.info(
-                  `È un array?: ${Array.isArray(chunkResponse.data)}`
-                );
-                // Se è un array, logghiamo la lunghezza, altrimenti logghiamo l'oggetto intero
-                if (Array.isArray(chunkResponse.data)) {
-                  logger.info(
-                    `Lunghezza array ricevuto: ${chunkResponse.data.length}`
-                  );
-                } else {
-                  logger.info("I dati ricevuti NON sono un array. Contenuto:");
-                }
-                // --- LOG DI DEBUG FINE ---
-
-                // Se docs non è un array o è vuoto, fermiamo il ciclo
-                if (Array.isArray(docs) && docs.length > 0) {
-                  // Cancellazione una tantum per survey
-                  if (!purged && docs[0].survey) {
-                    await Datapoints.deleteMany({ survey: docs[0].survey });
-                    purged = true;
-                  }
-
-                  // Preparazione e Upsert
-                  const dataToInsert = docs.map((d) => ({
-                    ...d,
-                    fromUrl: urlValue,
-                  }));
-
-                  logger.info(
-                    `Inserting chunk ${chunkIndex} with ${dataToInsert.length} datapoints...`
-                  );
-                  await Datapoints.upsertMany(dataToInsert);
-
-                  // Aggiorna parametri per il prossimo giro
-                  lastId = docs[docs.length - 1]?._id;
-                  chunkIndex++;
-                } else {
-                  logger.info("No more data to fetch.");
-                  hasMoreData = false;
+                })
+                if (response.data[0]) {
+                  if (!purged)  
+                    await Datapoints.deleteMany({ survey: response.data[0].survey }); // Cancellazione preliminare
+                  const dataToInsert = response.data.map((d) => {  // Preparazione dei dati
+                    return {
+                      ...d,
+                      fromUrl: urlValue,
+                    };
+                  });
+                  await Datapoints.upsertMany(dataToInsert); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+                  lastId = response.data[response.data.length - 1]?._id // Gestione indici per il prossimo loop
+                  purged = true;
                 }
               }
             } catch (error) {
