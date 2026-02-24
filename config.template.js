@@ -38,6 +38,7 @@ module.exports = {
   logLevel: "info",
   syncInterval: 86400000,
   doNotSyncAtStart: false,
+  upsertRecords: true,
   delays: 1,
   queryAllowedExtensions: ["csv", "json", "geojson"],
   parseCompatibilityMode: 0,

@@ -140,7 +140,7 @@ module.exports = {
                   }
                 })
                 if (response.data[0]) {
-                  if (!purged)  
+                  if (!purged && !config.upsertRecords)  
                     await Datapoints.deleteMany({ survey: response.data[0].survey }); // Cancellazione preliminare
                   const dataToInsert = response.data.map((d) => {  // Preparazione dei dati
                     return {
@@ -148,7 +148,10 @@ module.exports = {
                       fromUrl: urlValue,
                     };
                   });
-                  await Datapoints.upsertMany(dataToInsert); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+                  if(config.upsertRecords)
+                    await Datapoints.upsertMany(dataToInsert); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+                  else 
+                    await Datapoints.insertMany(dataToInsert)
                   lastId = response.data[response.data.length - 1]?._id // Gestione indici per il prossimo loop
                   purged = true;
                 }

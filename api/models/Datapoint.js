@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
+const config = require("../../config")
 
 // Funzione di utilità per pulire il nome della survey
 const cleanSurveyName = (val) => {
@@ -17,7 +18,7 @@ const datapointSchema = new mongoose.Schema(
     timestamp: { type: String, index: true },
     dimensions: { type: Object },
     value: Number,
-    dupl_hash: { type: String }, // Identificatore unico per evitare duplicati
+    dupl_hash: { type: String, unique : config.upsertRecords == true }, // Identificatore unico per evitare duplicati
   },
   {
     strict: false,
@@ -37,11 +38,12 @@ datapointSchema.pre("save", function (next) {
 
 // Funzione per generare l'hash unico (usata nell'inserimento massivo)
 const generateHash = (doc) => {
+  return JSON.stringify(doc)
   // Gestiamo sia se arriva come documento Mongoose sia come oggetto puro
   const target = doc._doc || doc;
 
   const dims = target.dimensions || [];
-  const sortedDims = [...dims].sort();
+  const sortedDims = [...dims].sort();//FIXME funziona solo con gli array, ci vorrebbe Object.entries()
   const sortedKeys = sortedDims.join("|");
 
   const s = cleanSurveyName(target.survey);
