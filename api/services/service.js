@@ -1,6 +1,7 @@
 const logger = require("percocologger");
 const log = logger.info;
 const Datapoints = require("../models/Datapoint");
+const Dimensions = require("../models/Dimensions");
 const config = require("../../config");
 const minioWriter = require("../../inputConnectors/minioConnector");
 const axios = require("axios");
@@ -140,7 +141,7 @@ module.exports = {
                   }
                 })
                 if (response.data[0]) {
-                  if (!purged && !config.upsertRecords)  
+                  if (!purged && !config.upsertRecords)
                     await Datapoints.deleteMany({ survey: response.data[0].survey }); // Cancellazione preliminare
                   const dataToInsert = response.data.map((d) => {  // Preparazione dei dati
                     return {
@@ -148,12 +149,38 @@ module.exports = {
                       fromUrl: urlValue,
                     };
                   });
-                  if(config.upsertRecords)
+                  if (config.upsertRecords)
                     await Datapoints.upsertMany(dataToInsert); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
-                  else 
+                  else
                     await Datapoints.insertMany(dataToInsert)
                   lastId = response.data[response.data.length - 1]?._id // Gestione indici per il prossimo loop
                   purged = true;
+                  const surveyKey = dataToInsert[0].survey.toUpperCase().replace(/\./g, "");
+                  const dimensionsFound = await Dimensions.findOne({ survey: surveyKey }); // direttamente un singolo documento
+                  const uniqueKeys = new Set();
+                  for (const obj of dataToInsert) {
+                    for (const key in obj.dimensions) {
+                      uniqueKeys.add(key);
+                    }
+                  }
+                  if (dimensionsFound) {
+                    for (const key in dimensionsFound.dimensions) {
+                      uniqueKeys.add(key);
+                    }
+                  }
+                  let dimensionsObject = {}
+                  for (let key of Array.from(uniqueKeys))
+                    dimensionsObject[key] = true
+                  const dimensionObject = {
+                    dimensions: dimensionsObject,
+                    survey: surveyKey
+                  };
+                  await Dimensions.findOneAndUpdate(
+                    { survey: surveyKey },
+                    dimensionObject,
+                    { upsert: true, new: true } 
+                  );
+                  logger.debug("Dimension object saved/updated:", dimensionObject);
                 }
               }
             } catch (error) {
