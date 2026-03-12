@@ -1,5 +1,8 @@
 ﻿const logger = require('percocologger')
 const log = logger.info
+const axios = require("axios")
+const config = require("../config")
+const Entity = require("../api/models/Entity")
 
 function objectCheck(objs) {
   for (let obj of objs)
@@ -40,7 +43,7 @@ function convertCSVtoJSON(csvData) {
       obj[this.deleteSpaces(headers[j].replaceAll(/['"]/g, ''))] = this.deleteSpaces(currentLine[j]?.replaceAll(/['"]/g, ''));
     results.push(obj);
   }
- 
+
   return JSON.stringify(results);
 }
 
@@ -64,6 +67,26 @@ function syncEntries(obj, visibility, entries) {
 
 module.exports = {
 
+  async verifyLostSubscription() {
+    //la seguente riga non funzionerà . Probabilmente bisogna chiamare l'ngsi broker
+    //let entities = await axios.get(config.orion.orionBaseUrl + apiConnector.getEndpointVersionApi().split("subscriptions") + "/entities?type=DistributionDCAT-AP")
+    let entities = await axios.get(config.orion.ngsiBrokerBaseUrl + "/api/distributiondcatap")
+    for (let ent of entities) {
+      const existingEntity = await Entity.findOne(ent.id)
+      if (existingEntity && existingEntity.modifiedDate.value["@value"] != ent.modifiedDate["@value"])
+        await axios.post("http://localhost:" + config.port || 3000 + "/api/orion/subscribe/6914a252ddb96948ee67b2e1", {
+          "id": "self",
+          "type": "Notification",
+          "subscriptionId": "self",
+          "notifiedAt": Date.now(),
+          "data": [
+            ent
+          ]
+        })
+    }
+    logger.info("Lost subscription verified")
+  },
+
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   },
@@ -83,7 +106,7 @@ module.exports = {
   },
 
   async getEntries(obj, type, name, entries) {// csv, jsonArray, json
- 
+
     let visibility = getVisibility(name)
     if (!obj[0].csv && Array.isArray(obj[0].json) && type != "jsonArray")
       type = "jsonArray" //throw new Error("obj is a jsonArray and not " + type)
@@ -98,10 +121,10 @@ module.exports = {
       else {
         logger.trace(obj[0])
         syncEntries(obj[0], visibility, entries)
-       
+
         return
       }
-     
+
       logger.trace("so it was a geojson")
     }
     logger.trace("Here's obj before flatmap")
@@ -111,7 +134,7 @@ module.exports = {
       obj = obj.map(o => o.properties)
     for (let o of obj)
       syncEntries(o, visibility, entries)
-   
+
     return
   },
 
@@ -156,7 +179,7 @@ module.exports = {
     ]
     const headers = possibleHeaders[0].length > possibleHeaders[1].length ? possibleHeaders[0] : possibleHeaders[1]
     const results = [];
-    
+
     for (let i = 1; i < lines.length; i++) {
       const obj = {};
       const currentLine = lines[i].trim().split(possibleHeaders[0].length > possibleHeaders[1].length ? "," : ";");
@@ -164,7 +187,7 @@ module.exports = {
         obj[this.deleteSpaces(headers[j].replaceAll(/['"]/g, ''))] = this.deleteSpaces(currentLine[j]?.replaceAll(/['"]/g, ''));
       results.push(obj);
     }
-   
+
     return JSON.stringify(results);
   },
 
@@ -174,7 +197,7 @@ module.exports = {
 
   checkConfig(configIn, configTemplate) {
     for (let key in configTemplate) {
-      if (typeof configIn[key] == "object") 
+      if (typeof configIn[key] == "object")
         configIn[key] = this.checkConfig(configIn[key], configTemplate[key])
       else if (configIn[key] == undefined) {
         logger.warn(`Config key ${key} is missing, using default value`)

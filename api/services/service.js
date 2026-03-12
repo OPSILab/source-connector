@@ -8,6 +8,7 @@ const axios = require("axios");
 const fs = require("fs");
 const { updateJWT } = require("../../utils/keycloak");
 let bearerToken;
+const Entity = require("../models/Entity")
 updateJWT()
   .then((token) => {
     bearerToken = token;
@@ -28,6 +29,15 @@ module.exports = {
 
     for (const ent of entities) {
       const id = ent.id || ent["@id"] || "unknown-id";
+      const modifiedDate = ent.modifiedDate.value["@value"]
+      let existingEntity = await Entity.findOne({ id })
+      if (existingEntity)
+        if (existingEntity.modifiedDate["@value"] != modifiedDate)
+          await Entity.findOneAndUpdate(ent)
+        else
+          return "Ok"
+      else
+        await Entity.insertMany([ent])
       let urlValue;
       if (
         ent[attrWithUrl] &&
@@ -178,7 +188,7 @@ module.exports = {
                   await Dimensions.findOneAndUpdate(
                     { survey: surveyKey },
                     dimensionObject,
-                    { upsert: true, new: true } 
+                    { upsert: true, new: true }
                   );
                   logger.debug("Dimension object saved/updated:", dimensionObject);
                 }

@@ -31,9 +31,11 @@ module.exports = {
     deleteAllDuplicateSubscriptions: true,
     attrWithUrl: "datasetUrl",
     orionBaseUrl: "http://localhost:1027",
+    ngsiBrokerBaseUrl: "https://dx-lab.it/",
     notificationUrl: "http://localhost:3000/api/orion/subscribe",
     fiwareService: "",
-    fiwareServicePath: ""
+    fiwareServicePath: "",
+    checkSubscriptionInterval: 0
   },
   logLevel: "info",
   syncInterval: 86400000,
