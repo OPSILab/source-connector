@@ -67,7 +67,13 @@ if (config.orion.subscribe)
         if (sub != "Already existing subscription found for the same notification URL.")
             logger.info("Orion subscription created: " + sub)
     }).catch(err => {
-        logger.error("Error creating Orion subscription: ", err.response?.data || err.message || err)
+        logger.error("Error creating Orion subscription: ")//, err.response?.data || err.message || err)
+        logger.error({
+            config : err.config,
+            status: err.response?.status,
+            ststusText: err.response?.statusText,
+            data: err.response?.data
+        })
         err.response?.config?.data && logger.error(err.response?.config?.data)
     })
 
@@ -88,16 +94,16 @@ async function getSubscriptions() {
 
 async function deleteSubscription(subId) {
     return (await axios.delete(`${(config.orion.orionBaseUrl || 'http://localhost:1027')}${getEndpointVersionApi(subId)}/${subId}`, (config?.orion?.fiwareService ?
+        {
+            headers:
             {
-                headers:
-                {
-                    'Fiware-Service': config.orion.fiwareService || 'service',
-                    'Fiware-ServicePath': config.orion.fiwareServicePath || '/service'
-                }
+                'Fiware-Service': config.orion.fiwareService || 'service',
+                'Fiware-ServicePath': config.orion.fiwareServicePath || '/service'
             }
-            :
-            {}
-        ))).data
+        }
+        :
+        {}
+    ))).data
 }
 
 function typesCheck(subTypes) {
