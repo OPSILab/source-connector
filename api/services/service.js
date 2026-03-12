@@ -9,7 +9,7 @@ const fs = require("fs");
 const { updateJWT } = require("../../utils/keycloak");
 let bearerToken;
 const Entity = require("../models/Entity")
-const { sleep } = require("../../utils/common")
+const { sleep, verifyLostSubscription } = require("../../utils/common")
 updateJWT()
   .then((token) => {
     bearerToken = token;
@@ -246,5 +246,10 @@ module.exports = {
     requestStack.shift()
   },
 
-  sync: minioWriter.sync,
+  sync() {
+    if (config.sourceConnectors.minioConnector)
+      minioWriter.sync()
+    if (config.sourceConnectors.apiConnector)
+      verifyLostSubscription()
+  },
 };

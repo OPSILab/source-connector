@@ -68,23 +68,28 @@ function syncEntries(obj, visibility, entries) {
 module.exports = {
 
   async verifyLostSubscription() {
-    //la seguente riga non funzionerà . Probabilmente bisogna chiamare l'ngsi broker
-    //let entities = await axios.get(config.orion.orionBaseUrl + apiConnector.getEndpointVersionApi().split("subscriptions") + "/entities?type=DistributionDCAT-AP")
-    let entities = await axios.get(config.orion.ngsiBrokerBaseUrl + "/api/distributiondcatap")
-    for (let ent of entities) {
-      const existingEntity = await Entity.findOne(ent.id)
-      if (existingEntity && existingEntity.modifiedDate.value["@value"] != ent.modifiedDate["@value"])
-        await axios.post("http://localhost:" + config.port || 3000 + "/api/orion/subscribe/6914a252ddb96948ee67b2e1", {
-          "id": "self",
-          "type": "Notification",
-          "subscriptionId": "self",
-          "notifiedAt": Date.now(),
-          "data": [
-            ent
-          ]
-        })
+    try {
+      //la seguente riga non funzionerà . Probabilmente bisogna chiamare l'ngsi broker
+      //let entities = await axios.get(config.orion.orionBaseUrl + apiConnector.getEndpointVersionApi().split("subscriptions") + "/entities?type=DistributionDCAT-AP")
+      let entities = await axios.get(config.orion.ngsiBrokerBaseUrl + "/api/distributiondcatap")
+      for (let ent of entities) {
+        const existingEntity = await Entity.findOne(ent.id)
+        if (existingEntity && existingEntity.modifiedDate.value["@value"] != ent.modifiedDate["@value"])
+          await axios.post("http://localhost:" + config.port || 3000 + "/api/orion/subscribe/6914a252ddb96948ee67b2e1", {
+            "id": "self",
+            "type": "Notification",
+            "subscriptionId": "self",
+            "notifiedAt": Date.now(),
+            "data": [
+              ent
+            ]
+          })
+      }
+      logger.info("Lost subscription verified")
     }
-    logger.info("Lost subscription verified")
+    catch (error) {
+      logger.error(error)
+    }
   },
 
   sleep(ms) {
