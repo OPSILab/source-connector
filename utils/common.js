@@ -89,7 +89,7 @@ module.exports = {
     }
     catch (error) {
       logger.error({
-        config : errror.config,
+        config : error.config,
         status: error.response?.status,
         ststusText: error.response?.statusText,
         data: error.response?.data
