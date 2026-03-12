@@ -88,7 +88,7 @@ module.exports = {
       logger.info("Lost subscription verified")
     }
     catch (error) {
-      logger.error(error)
+      logger.error(error.response.message, error.respose.status)
     }
   },
 

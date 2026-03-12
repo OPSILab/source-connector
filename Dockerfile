@@ -3,4 +3,5 @@ WORKDIR /app
 COPY . . 
 #COPY ../utils ../utils
 RUN npm install
+COPY ./token.template.js ./token.js
 CMD ["node", "index"]
