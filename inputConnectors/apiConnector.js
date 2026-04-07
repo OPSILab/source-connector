@@ -46,7 +46,7 @@ async function createOrionSubscription({
             expires: new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         }
 
-    const headers = { 'Content-Type': 'application/json', 'Accept': '*/*' };
+    const headers = { 'Content-Type': 'application/json', 'Accept': config.orion.apiVersion === "v2" ? 'application/json' : 'application/ld+json' };
     if (fiwareService) headers['Fiware-Service'] = fiwareService;
     if (fiwareServicePath) headers['Fiware-ServicePath'] = fiwareServicePath;
 
