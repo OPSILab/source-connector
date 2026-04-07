@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const logger = require('percocologger')
 const config = require('../config.js');
+const protocol = require(config.orion.protocol || 'http')
 
 function getEndpointVersionApi(subId) {
     return (config.orion.apiVersion == "v2" || (subId && !subId.startsWith("urn:ngsi-ld:Subscription:")) ? "/v2/subscriptions" : "/ngsi-ld/v1/subscriptions")
@@ -46,15 +47,49 @@ async function createOrionSubscription({
             expires: new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         }
 
-    const headers = { 'Content-Type': 'application/json', 'Accept': config.orion.apiVersion === "v2" ? 'application/json' : 'application/ld+json' };
-    if (fiwareService) headers['Fiware-Service'] = fiwareService;
-    if (fiwareServicePath) headers['Fiware-ServicePath'] = fiwareServicePath;
+    const postData = JSON.stringify(sub);
 
-    const url = `${orionBaseUrl.replace(/\/$/, '')}${getEndpointVersionApi()}`;
-    logger.info(url, sub, { headers })
-    const res = await axios.post(url, sub, { headers });
-    logger.info({ status: res.status })
-    return res.data;
+    const options = {
+        hostname: orionBaseUrl.replace(/\/$/, ''),
+        port: config.orion.port,
+        path: getEndpointVersionApi(),
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Content-Length': Buffer.byteLength(postData),
+        }
+    };
+    if (fiwareService) options.headers['Fiware-Service'] = fiwareService;
+    if (fiwareServicePath) options.headers['Fiware-ServicePath'] = fiwareServicePath;
+
+    return new Promise((resolve, reject) => {
+        const req = protocol.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    resolve(data);  // JSON.parse(data) se vuoi un oggetto
+                } else {
+                    reject({ status: res.statusCode, body: data });
+                }
+            });
+        });
+
+        req.on('error', reject);
+        req.write(postData);
+        req.end();
+    });
+
+    //const headers = { 'Content-Type': 'application/json', 'Accept': config.orion.apiVersion === "v2" ? 'application/json' : 'application/ld+json' };
+    //if (fiwareService) headers['Fiware-Service'] = fiwareService;
+    //if (fiwareServicePath) headers['Fiware-ServicePath'] = fiwareServicePath;
+
+    //const url = `${orionBaseUrl.replace(/\/$/, '')}${getEndpointVersionApi()}`;
+    //logger.info(url, sub, { headers })
+    //const res = await axios.post(url, sub, { headers });
+    //logger.info({ status: res.status })
+    //return res.data;
 }
 
 if (config.orion.subscribe)
@@ -69,7 +104,7 @@ if (config.orion.subscribe)
     }).catch(err => {
         logger.error("Error creating Orion subscription: ")//, err.response?.data || err.message || err)
         logger.error({
-            config : err.config,
+            config: err.config,
             status: err.response?.status,
             ststusText: err.response?.statusText,
             data: err.response?.data
