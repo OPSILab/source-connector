@@ -39,7 +39,7 @@ async function createOrionSubscription({
             notification: {
                 endpoint: {
                     uri: config.orion.notificationUrl,
-                    accept: "application/json"
+                    Accept: 'application/ld+json, application/json'
                 }
             },
             throttling: 5,
