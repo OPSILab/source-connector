@@ -39,14 +39,14 @@ async function createOrionSubscription({
             notification: {
                 endpoint: {
                     uri: config.orion.notificationUrl,
-                    Accept: 'application/ld+json, application/json'
+                    accept: "application/json"
                 }
             },
             throttling: 5,
             expires: new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         }
 
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json', 'Accept': '*/*' };
     if (fiwareService) headers['Fiware-Service'] = fiwareService;
     if (fiwareServicePath) headers['Fiware-ServicePath'] = fiwareServicePath;
 
