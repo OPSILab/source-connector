@@ -14,10 +14,10 @@ module.exports = {
         logger.info("Notification received")
         try {
             let response = await service.notifyPath(req, res)
-            if (typeof response == string)
+            if (typeof response == "string")
                 return res.send(response)
             else
-                res.status(500).send(response.toString() == "[object Object]" ? response : response.toString())
+                res.status(500).send(response?.toString() == "[object Object]" ? response : response.toString())
         }
         catch (error) {
             logger.error(error)
