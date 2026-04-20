@@ -233,17 +233,19 @@ async function executeRequest(req, res) {
 module.exports = {
   notifyPath: async (req, res) => {
     let turn = requestStack.length
+    let result
     requestStack.push([req, res])
     while (turn && requestStack.length > turn)
       await sleep(100)
     try {
-      await executeRequest(...requestStack[0])
+      result = await executeRequest(...requestStack[0])
     }
     catch (error) {
       logger.error(error)
       return error
     }
     requestStack.shift()
+    return result
   },
 
   sync() {
