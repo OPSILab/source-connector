@@ -30,8 +30,8 @@ async function executeRequest(req, res) {
 
   for (const ent of entities) {
     const id = ent.id || ent["@id"] || "unknown-id";
-    const modifiedDate = ent.modifiedDate.value["@value"]
-    let existingEntity = await Entity.findOne({ id })
+    const modifiedDate = ent.modifiedDate?.value["@value"]
+    let existingEntity = await Entity.findOne({ id })//TODO this way different id but same URL will be duplicated; fix
     if (existingEntity)
       if (existingEntity.modifiedDate["@value"] != modifiedDate)
         await Entity.findOneAndUpdate(ent)
@@ -45,7 +45,7 @@ async function executeRequest(req, res) {
       typeof ent[attrWithUrl] === "object" &&
       "value" in ent[attrWithUrl]
     ) {
-      urlValue = ent[attrWithUrl].value;
+      urlValue = ent[attrWithUrl].value || ent[attrWithUrl];
     } else if (ent[attrWithUrl]) {
       urlValue = ent[attrWithUrl];
     } else if (ent[attrWithUrl + ":value"]) {
@@ -231,6 +231,11 @@ async function executeRequest(req, res) {
 }
 
 module.exports = {
+
+  queue() {
+    return requestStack.length
+  },
+
   notifyPath: async (req, res) => {
     let turn = requestStack.length
     let result

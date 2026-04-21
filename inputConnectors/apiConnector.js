@@ -7,6 +7,17 @@ function getEndpointVersionApi(subId) {
     return (config.orion.apiVersion == "v2" || (subId && !subId.startsWith("urn:ngsi-ld:Subscription:")) ? "/v2/subscriptions" : "/ngsi-ld/v1/subscriptions")
 }
 
+function runSubscription() {
+    createOrionSubscription({
+        orionBaseUrl: config.orion?.orionBaseUrl || 'http://localhost:1027',
+        notificationUrl: config.orion?.notificationUrl || 'http://host.docker.internal:3000/api/orion/subscribe',
+        fiwareService: config.orion?.fiwareService,
+        fiwareServicePath: config.orion?.fiwareServicePath
+    });
+}
+
+setInterval(runSubscription, 24 * 60 * 60 * 1000);
+
 async function createOrionSubscription({
     orionBaseUrl,
     notificationUrl,
@@ -46,7 +57,7 @@ async function createOrionSubscription({
             expires: new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         }
 
-    const headers = { 'Content-Type': 'application/json'};
+    const headers = { 'Content-Type': 'application/json' };
     if (fiwareService) headers['Fiware-Service'] = fiwareService;
     if (fiwareServicePath) headers['Fiware-ServicePath'] = fiwareServicePath;
 
@@ -54,6 +65,7 @@ async function createOrionSubscription({
     logger.info(url, sub, { headers })
     const res = await axios.post(url, sub, { headers });
     logger.info({ status: res.status })
+    config.orion.purgeSubscriptionsAtStart = false;//only purge at start if there are duplicates, otherwise we can end in a loop of deleting and creating subscription if the orion instance is restarted while the query engine is restarting
     return res.data;
 }
 
@@ -69,7 +81,7 @@ if (config.orion.subscribe)
     }).catch(err => {
         logger.error("Error creating Orion subscription: ")//, err.response?.data || err.message || err)
         logger.error({
-            config : err.config,
+            config: err.config,
             status: err.response?.status,
             ststusText: err.response?.statusText,
             data: err.response?.data

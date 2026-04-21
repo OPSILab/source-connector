@@ -23,5 +23,11 @@ module.exports = {
             logger.error(error)
             res.status(500).send(error.toString() == "[object Object]" ? error : error.toString())
         }
+    },
+
+    queue : async (req, res) => {
+        logger.info("Queue")
+        return await res.send(await service.queue())
     }
+
 }
