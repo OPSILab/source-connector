@@ -88,13 +88,13 @@ module.exports = {
               ]
             })
           } catch (error) {
-            logger.error(error.response.data ? { axios: error.response.data } : error)
+            logger.error(error.response?.data ? { axios: error.response.data } : error)
           }
       }
       logger.info("Lost subscription verified")
     }
     catch (error) {
-      logger.error(error.response.data ? { axios: error.response.data } : error)
+      logger.error(error.response?.data ? { axios: error.response.data } : error)
     }
   },
 
