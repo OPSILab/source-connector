@@ -71,7 +71,7 @@ module.exports = {
     try {
       //la seguente riga non funzionerà . Probabilmente bisogna chiamare l'ngsi broker
       //let entities = await axios.get(config.orion.orionBaseUrl + apiConnector.getEndpointVersionApi().split("subscriptions") + "/entities?type=DistributionDCAT-AP")
-      let ngsiBrokerUrl = (config.orion.ngsiBrokerBaseUrl + "/api/distributiondcatap").replaceAll("//", "/")
+      let ngsiBrokerUrl = (config.orion.ngsiBrokerBaseUrl + "/api/distributiondcatap")//.replaceAll("//", "/")
       let entities = (await axios.get(ngsiBrokerUrl)).data
       logger.debug("Entities retrieved from ngsi broker: " + JSON.stringify(entities).substring(0, 100))
       for (let ent of entities) {
