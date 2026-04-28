@@ -207,7 +207,7 @@ module.exports = {
   },
 
   checkConfig(configIn, configTemplate) {
-    logger.debug(configIn)
+    logger.info(configIn)
     for (let key in configTemplate) {
       if (typeof configIn[key] == "object")
         configIn[key] = this.checkConfig(configIn[key], configTemplate[key])
