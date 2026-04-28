@@ -1,12 +1,15 @@
 const logger = require("percocologger");
 const log = logger.info;
 const Datapoints = require("../models/Datapoint");
+const Dimensions = require("../models/Dimensions");
 const config = require("../../config");
 const minioWriter = require("../../inputConnectors/minioConnector");
 const axios = require("axios");
 const fs = require("fs");
 const { updateJWT } = require("../../utils/keycloak");
 let bearerToken;
+const Entity = require("../models/Entity")
+const { sleep, verifyLostSubscription } = require("../../utils/common")
 updateJWT()
   .then((token) => {
     bearerToken = token;
@@ -18,176 +21,242 @@ const path = require("path");
 let attrWithUrl = config.orion?.attrWithUrl || "datasetUrl";
 require("../../inputConnectors/apiConnector");
 
-module.exports = {
-  notifyPath: async (req, res) => {
-    logger.info({ body: JSON.stringify(req.body) });
+let requestStack = []
+async function executeRequest(req, res) {
+  logger.info({ body: JSON.stringify(req.body) });
 
-    const data = req.body.data || req.body.value || req.body;
-    const entities = Array.isArray(data) ? data : [data];
+  const data = req.body.data || req.body.value || req.body;
+  const entities = Array.isArray(data) ? data : [data];
 
-    for (const ent of entities) {
-      const id = ent.id || ent["@id"] || "unknown-id";
-      let urlValue;
-      if (
-        ent[attrWithUrl] &&
-        typeof ent[attrWithUrl] === "object" &&
-        "value" in ent[attrWithUrl]
-      ) {
-        urlValue = ent[attrWithUrl].value;
-      } else if (ent[attrWithUrl]) {
-        urlValue = ent[attrWithUrl];
-      } else if (ent[attrWithUrl + ":value"]) {
-        urlValue = ent[attrWithUrl + ":value"];
-      } else if (ent.value) {
-        urlValue = ent.value;
-      }
+  for (const ent of entities) {
+    const id = ent.id || ent["@id"] || "unknown-id";
+    const modifiedDate = ent.modifiedDate?.value["@value"]
+    let existingEntity = await Entity.findOne({ id })//TODO this way different id but same URL will be duplicated; fix
+    if (existingEntity)
+      if (existingEntity.modifiedDate["@value"] != modifiedDate)
+        await Entity.findOneAndUpdate(ent)
+      else
+        return "Ok"
+    else
+      await Entity.insertMany([ent])
+    let urlValue;
+    if (
+      ent[attrWithUrl] &&
+      typeof ent[attrWithUrl] === "object" &&
+      "value" in ent[attrWithUrl]
+    ) {
+      urlValue = ent[attrWithUrl].value || ent[attrWithUrl];
+    } else if (ent[attrWithUrl]) {
+      urlValue = ent[attrWithUrl];
+    } else if (ent[attrWithUrl + ":value"]) {
+      urlValue = ent[attrWithUrl + ":value"];
+    } else if (ent.value) {
+      urlValue = ent.value;
+    }
 
-      if (!urlValue || typeof urlValue !== "string") {
-        console.warn(`no URL found for entity ${id}`);
-        continue;
-      }
+    if (!urlValue || typeof urlValue !== "string") {
+      console.warn(`no URL found for entity ${id}`);
+      continue;
+    }
 
-      let mapID =
-        req.query.mapID || req.params.mapID || ent.mapID || config.mapID;
+    let mapID =
+      req.query.mapID || req.params.mapID || ent.mapID || config.mapID;
 
-      if (!mapID) {
-        const response = await axios.get(urlValue);
-        if (response?.data?.data?.datapoints)
-          await Datapoints.insertMany(response.data.data.datapoints);
-        else
-          await minioWriter.insertInDBs(response.data, {
-            name: id + "-" + path.basename(new URL(urlValue).pathname),
-            lastModified: new Date(),
-            versionId: "null",
-            isDeleteMarker: false,
-            bucketName: "orion-notify",
-            size: response.data.length,
-            isLatest: true,
-            etag: "",
-            insertedBy: "orion-notify",
-          });
-      } else {
-        let response;
-        let retry = 2;
-        while (retry > 0)
-          try {
-            response = await axios.post(
-              config.mapEndpoint,
-              {
-                sourceDataType: "json",
-                sourceDataURL: urlValue,
-                decodeOptions: {
-                  decodeFrom: "json-stat",
-                },
-                config: {
-                  NGSI_entity: false,
-                  ignoreValidation: true,
-                  writers: [],
-                  disableAjv: true,
-                  mappingReport: true,
-                },
-                dataModel: {
-                  $schema: "http://json-schema.org/schema#",
-                  $id: "dataModels/DataModelTemp.json",
-                  title: "DataModelTemp",
-                  description: "Bike Hire Docking Station",
-                  type: "object",
-                  properties: {
-                    region: {
-                      type: "string",
-                    },
-                    source: {
-                      type: "string",
-                    },
-                    timestamp: {
-                      type: "string",
-                    },
-                    survey: {
-                      type: "string",
-                    },
-                    dimensions: {
-                      type: "object",
-                    },
-                    value: {
-                      type: "integer",
-                    },
+    if (!mapID) {
+      const response = await axios.get(urlValue);
+      if (response?.data?.data?.datapoints)
+        await Datapoints.insertMany(response.data.data.datapoints);
+      else
+        await minioWriter.insertInDBs(response.data, {
+          name: id + "-" + path.basename(new URL(urlValue).pathname),
+          lastModified: new Date(),
+          versionId: "null",
+          isDeleteMarker: false,
+          bucketName: "orion-notify",
+          size: response.data.length,
+          isLatest: true,
+          etag: "",
+          insertedBy: "orion-notify",
+        });
+    } else {
+      let response;
+      let retry = 2;
+      while (retry > 0)
+        try {
+          response = await axios.post(
+            config.mapEndpoint,
+            {
+              sourceDataType: "json",
+              sourceDataURL: urlValue,
+              decodeOptions: {
+                decodeFrom: "json-stat",
+              },
+              config: {
+                NGSI_entity: false,
+                ignoreValidation: true,
+                writers: [],
+                disableAjv: true,
+                mappingReport: true,
+              },
+              dataModel: {
+                $schema: "http://json-schema.org/schema#",
+                $id: "dataModels/DataModelTemp.json",
+                title: "DataModelTemp",
+                description: "Bike Hire Docking Station",
+                type: "object",
+                properties: {
+                  region: {
+                    type: "string",
+                  },
+                  source: {
+                    type: "string",
+                  },
+                  timestamp: {
+                    type: "string",
+                  },
+                  survey: {
+                    type: "string",
+                  },
+                  dimensions: {
+                    type: "object",
+                  },
+                  value: {
+                    type: "integer",
                   },
                 },
-              } /*
+              },
+            } /*
                         {
                             //mapID,
                             sourceDataURL: urlValue
                         }*/,
-              {
+            {
+              headers: {
+                Authorization: `Bearer ${bearerToken}`,
+              },
+            }
+          );
+          retry -= 2;
+          try {
+            logger.info("Inserting datapoints into DB...");
+            logger.info(response.data);
+            let outputId = response.data[response.data.length - 1].MAPPING_REPORT.outputId
+            let lastId
+            let purged = false
+            for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) { // Loop per gestire i chunk
+              //while (response.data[0] || response.data.id) {
+              logger.info(response.data.status)
+              response = await axios.get((config.sessionEndpoint || "http://localhost:5500/api/output?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
                 headers: {
-                  Authorization: `Bearer ${bearerToken}`,
-                },
-              }
-            );
-            retry -= 2;
-            try {
-              logger.info("Inserting datapoints into DB...");
-              logger.info(response.data);
-              let outputId = response.data[response.data.length - 1].MAPPING_REPORT.outputId
-              let lastId
-              let purged = false
-              for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) { // Loop per gestire i chunk
-                //while (response.data[0] || response.data.id) {
-                logger.info(response.data.status)
-                response = await axios.get((config.sessionEndpoint || "http://localhost:5500/api/output?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
-                  headers: {
-                    Authorization: `Bearer ${bearerToken}`
-                  }
-                })
-                if (response.data[0]) {
-                  if (!purged)  
-                    await Datapoints.deleteMany({ survey: response.data[0].survey }); // Cancellazione preliminare
-                  const dataToInsert = response.data.map((d) => {  // Preparazione dei dati
-                    return {
-                      ...d,
-                      fromUrl: urlValue,
-                    };
-                  });
-                  await Datapoints.upsertMany(dataToInsert); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
-                  lastId = response.data[response.data.length - 1]?._id // Gestione indici per il prossimo loop
-                  purged = true;
+                  Authorization: `Bearer ${bearerToken}`
                 }
+              })
+              if (response.data[0]) {
+                if (!purged && !config.upsertRecords)
+                  await Datapoints.deleteMany({ survey: response.data[0].survey }); // Cancellazione preliminare
+                const dataToInsert = response.data.map((d) => {  // Preparazione dei dati
+                  return {
+                    ...d,
+                    fromUrl: urlValue,
+                  };
+                });
+                if (config.upsertRecords)
+                  await Datapoints.upsertMany(dataToInsert); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
+                else
+                  await Datapoints.insertMany(dataToInsert)
+                lastId = response.data[response.data.length - 1]?._id // Gestione indici per il prossimo loop
+                purged = true;
+                const surveyKey = dataToInsert[0].survey.toUpperCase().replace(/\./g, "");
+                const dimensionsFound = await Dimensions.findOne({ survey: surveyKey }); // direttamente un singolo documento
+                const uniqueKeys = new Set();
+                for (const obj of dataToInsert) {
+                  for (const key in obj.dimensions) {
+                    uniqueKeys.add(key);
+                  }
+                }
+                if (dimensionsFound) {
+                  for (const key in dimensionsFound.dimensions) {
+                    uniqueKeys.add(key);
+                  }
+                }
+                let dimensionsObject = {}
+                for (let key of Array.from(uniqueKeys))
+                  dimensionsObject[key] = true
+                const dimensionObject = {
+                  dimensions: dimensionsObject,
+                  survey: surveyKey
+                };
+                await Dimensions.findOneAndUpdate(
+                  { survey: surveyKey },
+                  dimensionObject,
+                  { upsert: true, new: true }
+                );
+                logger.debug("Dimension object saved/updated:", dimensionObject);
               }
-            } catch (error) {
-              logger.error("Error inserting datapoints:", error);
             }
           } catch (error) {
-            logger.error(
-              "Error fetching mapped data from API Connector:",
-              error.response?.data || error.message
-            );
-            try {
-              bearerToken = await updateJWT(true);
-              retry--;
-            } catch (e) {
-              logger.error("Error updating JWT:", e);
-              retry--;
-            }
+            logger.error("Error inserting datapoints:", error);
           }
-        //logger.info(response.data.lenght)
+        } catch (error) {
+          logger.error(
+            "Error fetching mapped data from API Connector:",
+            error.response?.data || error.message
+          );
+          try {
+            bearerToken = await updateJWT(true);
+            retry--;
+          } catch (e) {
+            logger.error("Error updating JWT:", e);
+            retry--;
+          }
+        }
+      //logger.info(response.data.lenght)
 
-        /*for (let i in response.data)
-                    await minioWriter.insertInDBs(response.data[i], {
-                        name: response.data[i].id || mapID + '-' + path.basename((new URL(urlValue)).pathname) + i,
-                        lastModified: new Date(),
-                        versionId: 'null',
-                        isDeleteMarker: false,
-                        bucketName: 'orion-notify',
-                        size: response.data.length,
-                        isLatest: true,
-                        etag: '',
-                        insertedBy: 'orion-notify'
-                    });*/
-      }
-      logger.info(`downloaded ${urlValue}`);
+      /*for (let i in response.data)
+                  await minioWriter.insertInDBs(response.data[i], {
+                      name: response.data[i].id || mapID + '-' + path.basename((new URL(urlValue)).pathname) + i,
+                      lastModified: new Date(),
+                      versionId: 'null',
+                      isDeleteMarker: false,
+                      bucketName: 'orion-notify',
+                      size: response.data.length,
+                      isLatest: true,
+                      etag: '',
+                      insertedBy: 'orion-notify'
+                  });*/
     }
-    return "OK";
+    logger.info(`downloaded ${urlValue}`);
+  }
+  return "OK";
+}
+
+module.exports = {
+
+  queue() {
+    return requestStack.length
   },
 
-  sync: minioWriter.sync,
+  notifyPath: async (req, res) => {
+    let turn = requestStack.length
+    let result
+    requestStack.push([req, res])
+    while (turn && requestStack.length > turn)
+      await sleep(100)
+    try {
+      result = await executeRequest(...requestStack[0])
+    }
+    catch (error) {
+      logger.error(error)
+      return error
+    }
+    requestStack.shift()
+    return result
+  },
+
+  sync() {
+    if (config.sourceConnectors.minioConnector)
+      minioWriter.sync()
+    if (config.sourceConnectors.apiConnector)
+      verifyLostSubscription()
+  },
 };

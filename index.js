@@ -15,6 +15,13 @@ mongoose.connect(config.mongo, { useNewUrlParser: true, useUnifiedTopology: true
     app.use(express.urlencoded({ extended: false }));
     app.use(bodyParser.json());
     app.use(config.basePath || "/api", routes);
-    app.listen(port, () => { logger.info(`Source connector server listens on http://localhost:${port}`); });
+    app.listen(port, () => {
+        logger.info(`Source connector server listens on http://localhost:${port}`);
+        if (config.orion.checkSubscriptionInterval)
+            setInterval(common.verifyLostSubscription, config.checkSubscriptionInterval)
+        common.verifyLostSubscription().then(() => {
+            logger.info("lost subscription verified")
+        })
+    });
     logger.info(`Node.js version: ${process.version}`);
 })
