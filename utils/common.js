@@ -73,6 +73,7 @@ module.exports = {
       //let entities = await axios.get(config.orion.orionBaseUrl + apiConnector.getEndpointVersionApi().split("subscriptions") + "/entities?type=DistributionDCAT-AP")
       let ngsiBrokerUrl = (config.orion.ngsiBrokerBaseUrl + "/api/distributiondcatap").replaceAll("//", "/")
       let entities = (await axios.get(ngsiBrokerUrl)).data
+      logger.debug("Entities retrieved from ngsi broker: " + JSON.stringify(entities).substring(0, 100))
       for (let ent of entities) {
         const existingEntity = await Entity.findOne({ id: ent.id })
         logger.info(ent)
@@ -207,7 +208,7 @@ module.exports = {
   },
 
   checkConfig(configIn, configTemplate) {
-    logger.info(configIn)
+    //logger.info(configIn)
     for (let key in configTemplate) {
       if (typeof configIn[key] == "object")
         configIn[key] = this.checkConfig(configIn[key], configTemplate[key])
