@@ -77,7 +77,7 @@ module.exports = {
       for (let ent of entities) {
         const existingEntity = await Entity.findOne({ id: ent.id })
         logger.info(ent)
-        if (!existingEntity || (existingEntity && existingEntity.modifiedDate?.value["@value"] != ent.modifiedDate["@value"]))
+        if (!existingEntity || (ent.modifiedDate && (existingEntity && existingEntity.modifiedDate?.value["@value"] != ent.modifiedDate["@value"])))
           try {
             await axios.post("http://localhost:" + (config.port || 3001) + "/api/orion/subscribe/6914a252ddb96948ee67b2e1", {
               "id": "self",
