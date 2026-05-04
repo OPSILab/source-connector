@@ -30,15 +30,30 @@ async function executeRequest(req, res) {
 
   for (const ent of entities) {
     const id = ent.id || ent["@id"] || "unknown-id";
-    const modifiedDate = ent.modifiedDate?.value["@value"]
-    let existingEntity = await Entity.findOne({ id })//TODO this way different id but same URL will be duplicated; fix
+    const modifiedDate = ent.modifiedDate ?
+      ent.modifiedDate.value ?
+        ent.modifiedDate.value["@value"] :
+        ent.modifiedDate["@value"] :
+      "unknown-date";
+    let downloadURL = ent.downloadURL ?
+      ent.downloadURL.value ?
+        ent.downloadURL.value :
+        ent.downloadURL :
+      undefined;
+    if (!downloadURL)
+      return logger.warn(`No downloadURL found for entity ${id}, skipping...`)
+    logger.info(`Processing entity ${id} with modifiedDate ${modifiedDate}`);
+    let existingEntity = await Entity.findOne({ orionId: id });
+    logger.info(`Existing entity: ${existingEntity}`);
     if (existingEntity)
-      if (existingEntity.modifiedDate["@value"] != modifiedDate)
-        await Entity.findOneAndUpdate(ent)
-      else
-        return "Ok"
+      if (existingEntity.modifiedDate?.value && existingEntity.modifiedDate.value["@value"] != modifiedDate || 
+                 existingEntity.modifiedDate &&       existingEntity.modifiedDate["@value"] != modifiedDate 
+      )
+        await Entity.findOneAndUpdate({ orionId: id }, { ...ent, orionId: id })
+      else 
+        return "Entity not updated and not downloaded because modifiedDate has not changed"
     else
-      await Entity.insertMany([ent])
+      await Entity.insertMany([{ ...ent, orionId: id }])
     let urlValue;
     if (
       ent[attrWithUrl] &&

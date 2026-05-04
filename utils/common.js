@@ -75,9 +75,24 @@ module.exports = {
       let entities = (await axios.get(ngsiBrokerUrl)).data
       logger.debug("Entities retrieved from ngsi broker: " + JSON.stringify(entities).substring(0, 100))
       for (let ent of entities) {
-        const existingEntity = await Entity.findOne({ id: ent.id })
+        const { id, type } = ent
+        let orionedEnt = { id, type }
+        let entCopy = JSON.parse(JSON.stringify(ent))
+        delete entCopy.id
+        delete entCopy.type
+        for (let key in entCopy)
+          entCopy[key] = { value: entCopy[key] }
+        let parsedEnt = { ...orionedEnt, ...entCopy, orionId: id }
+        const existingEntity = await Entity.findOne({ orionId: id })
         logger.info(ent)
-        if (!existingEntity || (ent.modifiedDate && (existingEntity && existingEntity.modifiedDate?.value["@value"] != ent.modifiedDate["@value"])))
+        if (
+          !existingEntity ||
+          (
+            existingEntity?.modifiedDate?.value &&
+            parsedEnt?.modifiedDate?.value &&
+            existingEntity.modifiedDate.value["@value"] != parsedEnt.modifiedDate.value["@value"]
+          )
+        )
           try {
             await axios.post("http://localhost:" + (config.port || 3001) + "/api/orion/subscribe/6914a252ddb96948ee67b2e1", {
               "id": "self",
@@ -85,7 +100,7 @@ module.exports = {
               "subscriptionId": "self",
               "notifiedAt": Date.now(),
               "data": [
-                ent
+                parsedEnt
               ]
             })
           } catch (error) {
