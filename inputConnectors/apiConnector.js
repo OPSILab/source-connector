@@ -16,7 +16,8 @@ function runSubscription() {
     });
 }
 
-setInterval(runSubscription, 24 * 60 * 60 * 1000);
+if (config.orion.subscribe && config.orion.recreateSubscriptionAtInterval)
+    setInterval(runSubscription, config.orion.recreateSubscriptionAtInterval);
 
 async function createOrionSubscription({
     orionBaseUrl,

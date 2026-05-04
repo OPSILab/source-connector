@@ -39,6 +39,7 @@ module.exports = {
     fiwareService: "",
     fiwareServicePath: "",
     checkSubscriptionInterval: 0,
+    recreateSubscriptionAtInterval: 0,
     useNgsiBroker: false
   },
   logLevel: "info",
