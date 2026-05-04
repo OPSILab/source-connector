@@ -65,33 +65,56 @@ function syncEntries(obj, visibility, entries) {
       entries[key][stringify(obj[key])].push(visibility)
 }
 
+async function getFromOrion() {
+  let collectedEntities = []
+  let orionUrl = config.orion.orionBaseUrl + "/ngsi-ld/v1/entities?type=" + config.orion.subscribeType + "&limit=1000&count=true"
+  let entities = await axios.get(orionUrl)
+  collectedEntities = collectedEntities.concat(entities.data)
+  let totalEntities = entities.headers["NGSILD-Results-Count"]
+  while (collectedEntities.length < totalEntities)
+    collectedEntities = collectedEntities.concat((await axios.get(orionUrl + "&offset=" + collectedEntities.length)).data)
+  return collectedEntities
+}
+
+function orionizeEntity(ent) {
+  const { id, type } = ent
+  let orionedEnt = { id, type }
+  let entCopy = JSON.parse(JSON.stringify(ent))
+  delete entCopy.id
+  delete entCopy.type
+  for (let key in entCopy)
+    entCopy[key] = { value: entCopy[key] }
+  let parsedEnt = { ...orionedEnt, ...entCopy }
+  return parsedEnt
+}
+
 module.exports = {
 
-  async verifyLostSubscription() {
+  async verifyLostSubscriptionOrion() {
     try {
-      //la seguente riga non funzionerà . Probabilmente bisogna chiamare l'ngsi broker
-      //let entities = await axios.get(config.orion.orionBaseUrl + apiConnector.getEndpointVersionApi().split("subscriptions") + "/entities?type=DistributionDCAT-AP")
-      let ngsiBrokerUrl = (config.orion.ngsiBrokerBaseUrl + "/api/distributiondcatap")//.replaceAll("//", "/")
-      let entities = (await axios.get(ngsiBrokerUrl)).data
-      logger.debug("Entities retrieved from ngsi broker: " + JSON.stringify(entities).substring(0, 100))
+      let entities
+      if (config.orion.useNgsiBroker)
+        entities = (await axios.get(config.orion.ngsiBrokerUrl)).data
+      else
+        entities = await getFromOrion()
+      logger.debug("Entities retrieved: " + JSON.stringify(entities).substring(0, 100))
       for (let ent of entities) {
-        const { id, type } = ent
-        let orionedEnt = { id, type }
-        let entCopy = JSON.parse(JSON.stringify(ent))
-        delete entCopy.id
-        delete entCopy.type
-        for (let key in entCopy)
-          entCopy[key] = { value: entCopy[key] }
-        let parsedEnt = { ...orionedEnt, ...entCopy, orionId: id }
-        const existingEntity = await Entity.findOne({ orionId: id })
+        if (config.orion.useNgsiBroker)
+          ent = orionizeEntity(ent)
+        let existingEntity
+        ent.entityId = ent.id
+        existingEntity = await Entity.findOne({ entityId: ent.entityId })
         logger.info(ent)
         if (
           !existingEntity ||
           (
             existingEntity?.modifiedDate?.value &&
-            parsedEnt?.modifiedDate?.value &&
-            existingEntity.modifiedDate.value["@value"] != parsedEnt.modifiedDate.value["@value"]
+            ent?.modifiedDate?.value &&
+            existingEntity.modifiedDate.value["@value"] != ent.modifiedDate.value["@value"]
           )
+          || 
+          !existingEntity.modifiedDate?.value && ent.modifiedDate?.value
+
         )
           try {
             await axios.post("http://localhost:" + (config.port || 3001) + "/api/orion/subscribe/6914a252ddb96948ee67b2e1", {
@@ -100,7 +123,7 @@ module.exports = {
               "subscriptionId": "self",
               "notifiedAt": Date.now(),
               "data": [
-                parsedEnt
+                ent
               ]
             })
           } catch (error) {

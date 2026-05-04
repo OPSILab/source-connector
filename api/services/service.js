@@ -21,6 +21,39 @@ const path = require("path");
 let attrWithUrl = config.orion?.attrWithUrl || "datasetUrl";
 require("../../inputConnectors/apiConnector");
 
+function extractValue(ent, attr, nestedAttr, defaultValue) {
+  if (nestedAttr)
+    return ent[attr] ?
+      ent[attr].value ?
+        ent[attr].value["@value"] :
+        ent[attr]["@value"] :
+      defaultValue;
+  return ent[attr] ?
+    ent[attr].value ?
+      ent[attr].value :
+      ent[attr] :
+    defaultValue;
+
+}
+
+function extractDownloadURL(ent) {
+  let downloadURL
+  if (
+    ent[attrWithUrl] &&
+    typeof ent[attrWithUrl] === "object" &&
+    "value" in ent[attrWithUrl]
+  ) {
+    downloadURL = ent[attrWithUrl].value || ent[attrWithUrl];
+  } else if (ent[attrWithUrl]) {
+    downloadURL = ent[attrWithUrl];
+  } else if (ent[attrWithUrl + ":value"]) {
+    downloadURL = ent[attrWithUrl + ":value"];
+  } else if (ent.value) {
+    downloadURL = ent.value;
+  }
+  return downloadURL
+}
+
 let requestStack = []
 async function executeRequest(req, res) {
   logger.info({ body: JSON.stringify(req.body) });
@@ -29,61 +62,42 @@ async function executeRequest(req, res) {
   const entities = Array.isArray(data) ? data : [data];
 
   for (const ent of entities) {
-    const id = ent.id || ent["@id"] || "unknown-id";
-    const modifiedDate = ent.modifiedDate ?
-      ent.modifiedDate.value ?
-        ent.modifiedDate.value["@value"] :
-        ent.modifiedDate["@value"] :
-      "unknown-date";
-    let downloadURL = ent.downloadURL ?
-      ent.downloadURL.value ?
-        ent.downloadURL.value :
-        ent.downloadURL :
-      undefined;
-    if (!downloadURL)
-      return logger.warn(`No downloadURL found for entity ${id}, skipping...`)
+    const id = ent.id || ent["@id"]
+    const modifiedDate = extractValue(ent, "modifiedDate", "@value", "unknown-date");
+    let downloadURL = extractValue(ent, attrWithUrl)
+    if (!downloadURL) {
+      downloadURL = extractDownloadURL(ent)
+      if (!downloadURL || typeof downloadURL !== "string") {
+        console.warn(`no URL found for entity ${id}`);
+        continue;
+      }
+    }
     logger.info(`Processing entity ${id} with modifiedDate ${modifiedDate}`);
-    let existingEntity = await Entity.findOne({ orionId: id });
+    let existingEntity = id ?
+      await Entity.findOne({ entityId: id }) :
+      await Entity.findOne(ent)
     logger.info(`Existing entity: ${existingEntity}`);
     if (existingEntity)
-      if (existingEntity.modifiedDate?.value && existingEntity.modifiedDate.value["@value"] != modifiedDate || 
-                 existingEntity.modifiedDate &&       existingEntity.modifiedDate["@value"] != modifiedDate 
+      if (existingEntity.modifiedDate?.value && existingEntity.modifiedDate.value["@value"] != modifiedDate ||
+        existingEntity.modifiedDate && existingEntity.modifiedDate["@value"] != modifiedDate
       )
-        await Entity.findOneAndUpdate({ orionId: id }, { ...ent, orionId: id })
-      else 
+        await Entity.findOneAndUpdate({ entityId: id }, { ...ent, entityId: id })
+      else if (modifiedDate != "unknown-date")
         return "Entity not updated and not downloaded because modifiedDate has not changed"
+      else
+        logger.warn(`Entity ${id} has no modifiedDate, updating and downloading by default...`)
     else
-      await Entity.insertMany([{ ...ent, orionId: id }])
-    let urlValue;
-    if (
-      ent[attrWithUrl] &&
-      typeof ent[attrWithUrl] === "object" &&
-      "value" in ent[attrWithUrl]
-    ) {
-      urlValue = ent[attrWithUrl].value || ent[attrWithUrl];
-    } else if (ent[attrWithUrl]) {
-      urlValue = ent[attrWithUrl];
-    } else if (ent[attrWithUrl + ":value"]) {
-      urlValue = ent[attrWithUrl + ":value"];
-    } else if (ent.value) {
-      urlValue = ent.value;
-    }
-
-    if (!urlValue || typeof urlValue !== "string") {
-      console.warn(`no URL found for entity ${id}`);
-      continue;
-    }
-
+      await Entity.insertMany([{ ...ent, entityId: id }])
     let mapID =
       req.query.mapID || req.params.mapID || ent.mapID || config.mapID;
 
     if (!mapID) {
-      const response = await axios.get(urlValue);
+      const response = await axios.get(downloadURL);
       if (response?.data?.data?.datapoints)
         await Datapoints.insertMany(response.data.data.datapoints);
       else
         await minioWriter.insertInDBs(response.data, {
-          name: id + "-" + path.basename(new URL(urlValue).pathname),
+          name: id + "-" + path.basename(new URL(downloadURL).pathname),
           lastModified: new Date(),
           versionId: "null",
           isDeleteMarker: false,
@@ -102,7 +116,7 @@ async function executeRequest(req, res) {
             config.mapEndpoint,
             {
               sourceDataType: "json",
-              sourceDataURL: urlValue,
+              sourceDataURL: downloadURL,
               decodeOptions: {
                 decodeFrom: "json-stat",
               },
@@ -143,7 +157,7 @@ async function executeRequest(req, res) {
             } /*
                         {
                             //mapID,
-                            sourceDataURL: urlValue
+                            sourceDataURL: downloadURL
                         }*/,
             {
               headers: {
@@ -172,7 +186,7 @@ async function executeRequest(req, res) {
                 const dataToInsert = response.data.map((d) => {  // Preparazione dei dati
                   return {
                     ...d,
-                    fromUrl: urlValue,
+                    fromUrl: downloadURL,
                   };
                 });
                 if (config.upsertRecords)
@@ -229,7 +243,7 @@ async function executeRequest(req, res) {
 
       /*for (let i in response.data)
                   await minioWriter.insertInDBs(response.data[i], {
-                      name: response.data[i].id || mapID + '-' + path.basename((new URL(urlValue)).pathname) + i,
+                      name: response.data[i].id || mapID + '-' + path.basename((new URL(downloadURL)).pathname) + i,
                       lastModified: new Date(),
                       versionId: 'null',
                       isDeleteMarker: false,
@@ -240,7 +254,7 @@ async function executeRequest(req, res) {
                       insertedBy: 'orion-notify'
                   });*/
     }
-    logger.info(`downloaded ${urlValue}`);
+    logger.info(`downloaded ${downloadURL}`);
   }
   return "OK";
 }

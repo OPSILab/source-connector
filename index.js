@@ -18,10 +18,11 @@ mongoose.connect(config.mongo, { useNewUrlParser: true, useUnifiedTopology: true
     app.listen(port, () => {
         logger.info(`Source connector server listens on http://localhost:${port}`);
         if (config.orion.checkSubscriptionInterval)
-            setInterval(common.verifyLostSubscription, config.checkSubscriptionInterval)
-        common.verifyLostSubscription().then(() => {
-            logger.info("lost subscription verified")
-        })
+            setInterval(common.verifyLostSubscriptionOrion, config.checkSubscriptionInterval)
+        if (config.orion.subscribe)
+            common.verifyLostSubscriptionOrion().then(() => {
+                logger.info("lost subscription verified")
+            })
     });
     logger.info(`Node.js version: ${process.version}`);
 })

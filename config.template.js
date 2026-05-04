@@ -34,11 +34,12 @@ module.exports = {
     orionBaseUrl: "http://localhost:1026",
     hostname : "localhost",
     port: 1026,
-    ngsiBrokerBaseUrl: "https://dx-lab.it/",
+    ngsiBrokerUrl: "https://dx-lab.it/",
     notificationUrl: "http://localhost:3000/api/orion/subscribe",
     fiwareService: "",
     fiwareServicePath: "",
-    checkSubscriptionInterval: 0
+    checkSubscriptionInterval: 0,
+    useNgsiBroker: false
   },
   logLevel: "info",
   syncInterval: 86400000,
