@@ -65,6 +65,11 @@ async function executeRequest(req, res) {
     const id = ent.id || ent["@id"]
     const modifiedDate = extractValue(ent, "modifiedDate", "@value", "unknown-date");
     let downloadURL = extractValue(ent, attrWithUrl)
+    const format = extractValue(ent, "format")
+    if (format && format.toLowerCase() != "xml") {
+      logger.warn(`Entity ${id} has format ${format}, skipping...`);
+      continue
+    }
     if (!downloadURL) {
       downloadURL = extractDownloadURL(ent)
       if (!downloadURL || typeof downloadURL !== "string") {
