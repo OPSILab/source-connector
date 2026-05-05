@@ -92,7 +92,7 @@ async function executeRequest(req, res) {
       else
         logger.warn(`Entity ${id} has no modifiedDate, updating and downloading by default...`)
     else
-      await Entity.insertMany([{ ...ent, entityId: id }])
+      logger.info(`Entity ${id} not found in database, mapping...`)
     let mapID =
       req.query.mapID || req.params.mapID || ent.mapID || config.mapID;
 
@@ -260,6 +260,7 @@ async function executeRequest(req, res) {
                   });*/
     }
     logger.info(`downloaded ${downloadURL}`);
+    await Entity.insertMany([{ ...ent, entityId: id }])
   }
   return "OK";
 }
