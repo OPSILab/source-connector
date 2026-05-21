@@ -12,7 +12,6 @@ const datapointSchema = new mongoose.Schema(
   {
     source: { type: String, index: true, uppercase: true }, // uppercase: true lo fa in automatico
     survey: { type: String, index: true, uppercase: true },
-    surveyName: String,
     region: { type: String, index: true, uppercase: true },
     fromUrl: String,
     timestamp: { type: String, index: true },
@@ -22,7 +21,8 @@ const datapointSchema = new mongoose.Schema(
   },
   {
     strict: false,
-    timestamps: true,
+    timestamps: false,
+    versionKey: false,
   }
 );
 

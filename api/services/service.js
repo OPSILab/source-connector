@@ -9,7 +9,7 @@ const fs = require("fs");
 const { updateJWT } = require("../../utils/keycloak");
 let bearerToken;
 const Entity = require("../models/Entity")
-const { sleep, verifyLostSubscription } = require("../../utils/common")
+const { sleep, verifyLostSubscription, checkMustUpdateDistributionDcatAp, fastAndPartialOrionizeEntity } = require("../../utils/common")
 updateJWT()
   .then((token) => {
     bearerToken = token;
@@ -82,20 +82,20 @@ async function executeRequest(req, res) {
       await Entity.findOne({ entityId: id }) :
       await Entity.findOne(ent)
     logger.info(`Existing entity: ${existingEntity}`);
+    let mustUpdate, mustDownload
     if (existingEntity)
-      if (existingEntity.modifiedDate?.value && existingEntity.modifiedDate.value["@value"] != modifiedDate ||
-        existingEntity.modifiedDate && existingEntity.modifiedDate["@value"] != modifiedDate
-      )
-        await Entity.findOneAndUpdate({ entityId: id }, { ...ent, entityId: id })
-      else if (modifiedDate != "unknown-date")
-        return "Entity not updated and not downloaded because modifiedDate has not changed"
-      else
-        logger.warn(`Entity ${id} has no modifiedDate, updating and downloading by default...`)
-    else
+      mustUpdate = checkMustUpdateDistributionDcatAp(fastAndPartialOrionizeEntity(ent), fastAndPartialOrionizeEntity(existingEntity))
+    else {
+      mustDownload = true
       logger.info(`Entity ${id} not found in database, mapping...`)
+    }
+    if (!mustDownload && !mustUpdate)
+      continue
     let mapID =
       req.query.mapID || req.params.mapID || ent.mapID || config.mapID;
 
+    let retry = 2;
+    let correctlyInserted = false
     if (!mapID) {
       const response = await axios.get(downloadURL);
       if (response?.data?.data?.datapoints)
@@ -112,10 +112,10 @@ async function executeRequest(req, res) {
           etag: "",
           insertedBy: "orion-notify",
         });
-    } else {
+    }
+    else {
       let response;
-      let retry = 2;
-      while (retry > 0)
+      while (retry > 0) {
         try {
           response = await axios.post(
             config.mapEndpoint,
@@ -123,7 +123,7 @@ async function executeRequest(req, res) {
               sourceDataType: "json",
               sourceDataURL: downloadURL,
               decodeOptions: {
-                decodeFrom: "json-stat",
+                decodeFrom: format.toLowerCase() === "xml" ? "sdmx-xml" : format.toLowerCase(),
               },
               config: {
                 NGSI_entity: false,
@@ -228,6 +228,7 @@ async function executeRequest(req, res) {
                 logger.debug("Dimension object saved/updated:", dimensionObject);
               }
             }
+            correctlyInserted = true;
           } catch (error) {
             logger.error("Error inserting datapoints:", error);
           }
@@ -244,7 +245,8 @@ async function executeRequest(req, res) {
             retry--;
           }
         }
-      //logger.info(response.data.lenght)
+      }
+      //logger.info(response.data.length)
 
       /*for (let i in response.data)
                   await minioWriter.insertInDBs(response.data[i], {
@@ -260,7 +262,11 @@ async function executeRequest(req, res) {
                   });*/
     }
     logger.info(`downloaded ${downloadURL}`);
-    await Entity.insertMany([{ ...ent, entityId: id }])
+    if (correctlyInserted)
+      if (mustUpdate)
+        await Entity.findOneAndUpdate({ entityId: id }, { ...ent, entityId: id })
+      else if (mustDownload)
+        await Entity.insertMany([{ ...ent, entityId: id }])
   }
   return "OK";
 }

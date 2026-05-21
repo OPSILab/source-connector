@@ -18,7 +18,7 @@ mongoose.connect(config.mongo, { useNewUrlParser: true, useUnifiedTopology: true
     app.listen(port, () => {
         logger.info(`Source connector server listens on http://localhost:${port}`);
         if (config.orion.checkSubscriptionInterval)
-            setInterval(common.verifyLostSubscriptionOrion, config.checkSubscriptionInterval)
+            setInterval(common.verifyLostSubscriptionOrion, config.orion.checkSubscriptionInterval)
         if (config.orion.subscribe)
             common.verifyLostSubscriptionOrion().then(() => {
                 logger.info("lost subscription verified")

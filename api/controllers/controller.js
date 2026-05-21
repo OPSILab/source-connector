@@ -27,7 +27,7 @@ module.exports = {
 
     queue : async (req, res) => {
         logger.info("Queue")
-        return await res.send(await service.queue())
+        return await res.send({ queue: await service.queue() })
     }
 
 }

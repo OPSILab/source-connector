@@ -76,19 +76,77 @@ async function getFromOrion() {
   return collectedEntities
 }
 
-function orionizeEntity(ent) {
+function fastAndPartialOrionizeEntity(ent, recursive) {
   const { id, type } = ent
-  let orionedEnt = { id, type }
+  let orionedEnt = {}
+  if (id) orionedEnt.id = id
+  if (type) orionedEnt.type = type
   let entCopy = JSON.parse(JSON.stringify(ent))
   delete entCopy.id
   delete entCopy.type
-  for (let key in entCopy)
-    entCopy[key] = { value: entCopy[key] }
+  let isOrionEntity = true
+  if (!recursive)
+    for (let key in entCopy)
+      if (typeof entCopy[key] != "object" || (!entCopy[key].value && !entCopy[key].type)) {
+        isOrionEntity = false
+        break
+      }
+  if (recursive || !isOrionEntity)
+    for (let key in entCopy)
+      if (typeof entCopy[key] != "object" || Array.isArray(entCopy[key]))
+        entCopy[key] = { value: entCopy[key] }
+      else //if (!entCopy[key].value)
+        entCopy[key] = fastAndPartialOrionizeEntity(entCopy[key], true)
   let parsedEnt = { ...orionedEnt, ...entCopy }
   return parsedEnt
 }
 
+function checkField(ent, existingEntity, field) {
+  const check = (
+    !existingEntity
+    ||
+    (
+      existingEntity?.[field]?.value?.["@value"] &&
+      ent?.[field]?.value?.["@value"] &&
+      existingEntity[field].value["@value"] != ent[field].value["@value"]
+    )
+    ||
+    (
+      existingEntity?.[field]?.value && !existingEntity?.[field]?.value?.["@value"] &&
+      ent?.[field]?.value && !ent?.[field]?.value?.["@value"] &&
+      typeof existingEntity[field].value != "object" && typeof ent[field].value != "object" && 
+      !Array.isArray(existingEntity[field].value) && !Array.isArray(ent[field].value) &&
+      existingEntity[field].value != ent[field].value
+    )
+    ||
+    (
+      existingEntity?.[field]?.value && (typeof existingEntity[field].value == "object" || Array.isArray(existingEntity[field].value)) &&
+      ent?.[field]?.value && (typeof ent[field].value == "object" || Array.isArray(ent[field].value)) &&
+      JSON.stringify(existingEntity[field].value) != JSON.stringify(ent[field].value)
+    )
+    ||
+    !existingEntity?.[field]?.value && ent?.[field]?.value
+  )
+  logger.debug("check " + field + ": " + check)
+  return check
+}
+
+function checkMustUpdateDistributionDcatAp(ent, existingEntity) {
+  console.log(checkField(ent, existingEntity, "modifiedDate"))
+  console.log(checkField(ent, existingEntity, "byteSize"))
+  console.log(checkField(ent, existingEntity, "checksum"))
+  return (
+    checkField(ent, existingEntity, "modifiedDate") ||
+    checkField(ent, existingEntity, "byteSize") ||
+    checkField(ent, existingEntity, "checksum")
+  )
+}
+
 module.exports = {
+
+  checkMustUpdateDistributionDcatAp,
+
+  fastAndPartialOrionizeEntity,
 
   async verifyLostSubscriptionOrion() {
     try {
@@ -100,22 +158,14 @@ module.exports = {
       logger.debug("Entities retrieved: " + JSON.stringify(entities).substring(0, 100))
       for (let ent of entities) {
         if (config.orion.useNgsiBroker)
-          ent = orionizeEntity(ent)
+          ent = fastAndPartialOrionizeEntity(ent)
         let existingEntity
         ent.entityId = ent.id
         existingEntity = await Entity.findOne({ entityId: ent.entityId })
+        if (existingEntity)
+          existingEntity = fastAndPartialOrionizeEntity(existingEntity)
         logger.info(ent)
-        if (
-          !existingEntity ||
-          (
-            existingEntity?.modifiedDate?.value &&
-            ent?.modifiedDate?.value &&
-            existingEntity.modifiedDate.value["@value"] != ent.modifiedDate.value["@value"]
-          )
-          || 
-          !existingEntity.modifiedDate?.value && ent.modifiedDate?.value
-
-        )
+        if (checkMustUpdateDistributionDcatAp(ent, existingEntity))
           try {
             await axios.post("http://localhost:" + (config.port || 3001) + "/api/orion/subscribe/6914a252ddb96948ee67b2e1", {
               "id": "self",
