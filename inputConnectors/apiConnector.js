@@ -55,8 +55,19 @@ async function pollAPI() {
                             headers
                         })
                         logger.info(`Data from ${api.name} API (batch ${batchValue}):`, response.data.length)
-                        await Source.deleteMany({ source: batchUrl })
-                        await Source.insertMany(response.data.map(item => ({ ...item, source: batchUrl })))
+                        if (config.apiConnectorConfig.upsertRecords) {
+                            await Source.deleteMany({ source: batchUrl })
+                            await Source.insertMany(response.data.map(item => ({ ...item, source: batchUrl })))
+                        }
+                        else {
+                            let existingSources = (await Source.find({ source: batchUrl }).lean())
+                            existingSources.forEach(item => delete item._id)
+                            const newSources = response.data.map(item => ({ ...item, source: batchUrl }))
+                            const sourcesToInsert = newSources.filter(newItem => !existingSources.some(existingItem => JSON.stringify(existingItem) === JSON.stringify(newItem)))
+                            if (sourcesToInsert.length > 0)
+                                await Source.insertMany(sourcesToInsert)
+
+                        }
                     }
                 }
                 else {
