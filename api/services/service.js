@@ -19,7 +19,7 @@ updateJWT()
 
 const path = require("path");
 let attrWithUrl = config.orion?.attrWithUrl || "datasetUrl";
-require("../../inputConnectors/apiConnector");
+require("../../inputConnectors/orionConnector");
 
 function extractValue(ent, attr, nestedAttr, defaultValue) {
   if (nestedAttr)
@@ -300,7 +300,7 @@ module.exports = {
   sync() {
     if (config.sourceConnectors.minioConnector)
       minioWriter.sync()
-    if (config.sourceConnectors.apiConnector)
+    if (config.sourceConnectors.orionConnector)
       verifyLostSubscription()
   },
 };

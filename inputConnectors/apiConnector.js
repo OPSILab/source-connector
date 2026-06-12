@@ -1,168 +1,108 @@
-const express = require('express');
-const axios = require('axios');
+const config = require('../config')
 const logger = require('percocologger')
-const config = require('../config.js');
+const axios = require('axios')
+const Source = require("../api/models/Models").Source
+let tokens = {}
 
-function getEndpointVersionApi(subId) {
-    return (config.orion.apiVersion == "v2" || (subId && !subId.startsWith("urn:ngsi-ld:Subscription:")) ? "/v2/subscriptions" : "/ngsi-ld/v1/subscriptions")
-}
+async function pollAPI() {
+    try {
+        const urls = config.apiConnectorConfig.apiUrls
+        for (const api of urls) {
+            try {
+                const headers = {}
+                for (const header in api.headers)
+                    if (api.headers[header].type === "bearerToken") {
+                        if (!api.headers[header].value || (api.headers[header].expiry && new Date() > new Date(api.headers[header].expiry))) {
+                            if (tokens[api.headers[header].authUrl.value] && tokens[api.headers[header].authUrl.value].expiry && new Date() < new Date(tokens[api.headers[header].authUrl.value].expiry)) {
+                                api.headers[header].value = tokens[api.headers[header].authUrl.value].token
+                                if (tokens[api.headers[header].authUrl.value].expiry)
+                                    api.headers[header].expiry = tokens[api.headers[header].authUrl.value].expiry
+                                api.bearerPosition = header
+                                //headers[header] = api.headers[header].value
+                                continue
+                            }
+                            const response = await getToken(api.headers[header].authUrl.value, api.headers[header].authUrl.requestType, api.headers[header].credentials, api.headers[header].authProfile)
+                            api.headers[header].value = "Bearer " + response.data.access_token
+                            //headers[header] = api.headers[header].value
+                            tokens[api.headers[header].authUrl.value] = {
+                                token: api.headers[header].value,
+                                expiry: response.data.expires_in ? new Date(new Date().getTime() + response.data.expires_in * 1000) : null
+                            }
+                            if (response.data.expires_in)
+                                api.headers[header].expiry = new Date(new Date().getTime() + response.data.expires_in * 1000)
+                        }
+                        api.bearerPosition = header
+                    }
+                /*else if (api.headers[header].type === "basic" && api.headers[header].alwaysSend)
+                    headers[header] = setBasicAuthHeader(api.headers[header].credentials)*/
+                if (api.bearerPosition)
+                    headers[api.bearerPosition] = api.headers[api.bearerPosition].value
 
-function runSubscription() {
-    createOrionSubscription({
-        orionBaseUrl: config.orion?.orionBaseUrl || 'http://localhost:1027',
-        notificationUrl: config.orion?.notificationUrl || 'http://host.docker.internal:3000/api/orion/subscribe',
-        fiwareService: config.orion?.fiwareService,
-        fiwareServicePath: config.orion?.fiwareServicePath
-    });
-}
+                if (api.headers.Authorization && api.headers.Authorization.type === "basic" && api.headers.Authorization.alwaysSend)
+                    headers.Authorization = setBasicAuthHeader(api.headers.Authorization.credentials)
 
-if (config.orion.subscribe && config.orion.recreateSubscriptionAtInterval)
-    setInterval(runSubscription, config.orion.recreateSubscriptionAtInterval);
-
-async function createOrionSubscription({
-    orionBaseUrl,
-    notificationUrl,
-    fiwareService,
-    fiwareServicePath
-}) {
-    if (await checkMultipleSubscriptions(notificationUrl) > 0)
-        return logger.warn(message = "Already existing subscription found for the same notification URL.") || message;
-    const sub = config.orion.apiVersion == "v2" ?
-        {
-            description: `Query engine subscription`,
-            subject: {
-                entities: [{ idPattern: '.*' }],
-            },
-
-            notification: {
-                http: { url: notificationUrl },
-                attrs: [],
-            },
-            throttling: 1
-        } :
-        {
-            type: "Subscription",
-            entities: [
-                {
-                    type: config.orion.subscribeType || "Thing"
+                if (api.batch) {
+                    logger.info(`Polling ${api.name} API for batch values from ${api.batch.from}...`)
+                    const batchResponse = await axios.get(api.batch.from, {
+                        headers
+                    })
+                    const batchValues = batchResponse.data.map(item => item[api.batch.param])
+                    logger.info(`Batch values for ${api.name} API:`, batchValues)
+                    for (const batchValue of batchValues) {
+                        logger.info(`Polling ${api.name} API for batch value:`, batchValue)
+                        const batchUrl = api.url.replace("{batch}", batchValue)
+                        const response = await axios.get(batchUrl, {
+                            headers
+                        })
+                        logger.info(`Data from ${api.name} API (batch ${batchValue}):`, response.data.length)
+                        await Source.deleteMany({ source: batchUrl })
+                        await Source.insertMany(response.data.map(item => ({ ...item, source: batchUrl })))
+                    }
                 }
-            ],
-            watchedAttributes: config.orion.watchedAttributes || [config.orion.attrWithUrl],
-            notification: {
-                endpoint: {
-                    uri: config.orion.notificationUrl,
-                    accept: "application/json"
-                }
-            },
-            throttling: 5,
-            expires: new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        }
+                else {
 
-    const headers = { 'Content-Type': 'application/json' };
-    if (fiwareService) headers['Fiware-Service'] = fiwareService;
-    if (fiwareServicePath) headers['Fiware-ServicePath'] = fiwareServicePath;
-
-    const url = `${orionBaseUrl.replace(/\/$/, '')}${getEndpointVersionApi()}`;
-    logger.info(url, sub, { headers })
-    const res = await axios.post(url, sub, { headers });
-    logger.info({ status: res.status })
-    config.orion.purgeSubscriptionsAtStart = false;//only purge at start if there are duplicates, otherwise we can end in a loop of deleting and creating subscription if the orion instance is restarted while the query engine is restarting
-    return res.data;
-}
-
-if (config.orion.subscribe)
-    createOrionSubscription({
-        orionBaseUrl: config.orion?.orionBaseUrl || 'http://localhost:1027',
-        notificationUrl: config.orion?.notificationUrl || 'http://host.docker.internal:3000/api/orion/subscribe',
-        fiwareService: config.orion?.fiwareService,
-        fiwareServicePath: config.orion?.fiwareServicePath
-    }).then(sub => {
-        if (sub != "Already existing subscription found for the same notification URL.")
-            logger.info("Orion subscription created: " + sub)
-    }).catch(err => {
-        logger.error("Error creating Orion subscription: ")//, err.response?.data || err.message || err)
-        logger.error({
-            config: err.config,
-            status: err.response?.status,
-            ststusText: err.response?.statusText,
-            data: err.response?.data
-        })
-        err.response?.config?.data && logger.error(err.response?.config?.data)
-    })
-
-async function getSubscriptions() {
-    return (await axios.get((config.orion.orionBaseUrl || 'http://localhost:1027') + getEndpointVersionApi(),
-        (config?.orion?.fiwareService ?
-            {
-                headers:
-                {
-                    'Fiware-Service': config.orion.fiwareService || 'service',
-                    'Fiware-ServicePath': config.orion.fiwareServicePath || '/service'
+                    const response = await axios.get(api.url, {
+                        headers
+                    })
+                    logger.info(`Data from ${api.name} API:`, response.data.length)
+                    await Source.deleteMany({ source: api.url })
+                    await Source.insertMany(response.data.map(item => ({ ...item, source: api.url })))
                 }
             }
-            :
-            {}
-        ))).data
-}
-
-async function deleteSubscription(subId) {
-    return (await axios.delete(`${(config.orion.orionBaseUrl || 'http://localhost:1027')}${getEndpointVersionApi(subId)}/${subId}`, (config?.orion?.fiwareService ?
-        {
-            headers:
-            {
-                'Fiware-Service': config.orion.fiwareService || 'service',
-                'Fiware-ServicePath': config.orion.fiwareServicePath || '/service'
+            catch (error) {
+                logger.error(`Error polling ${api.name} API:`)
+                if (error.response) {
+                    logger.error("Status:", error.response.status)
+                    logger.error("Data:", error.response.data)
+                    logger.error("Headers:", error.request.headers)
+                    logger.error("Request:", error.request)
+                    process.exit()
+                }
+                else
+                    logger.error(error)
             }
-        }
-        :
-        {}
-    ))).data
-}
-
-function typesCheck(subTypes) {
-    // subTypes?.[0]?.type == (config.orion.subscribeType || "Thing")
-    return subTypes.find(subType => subType.type === (config.orion.subscribeType || "Thing"))
-}
-
-function attributesCheck(subAttributes) {
-    const sortedActuallyWatchedAttributes = [...subAttributes].sort();
-    const sortedDesiredWatchedAttributes = [...config.orion.watchedAttributes].sort();
-
-    if (sortedActuallyWatchedAttributes.length !== sortedDesiredWatchedAttributes.length) return false;
-    return sortedActuallyWatchedAttributes.every((val, i) => val === sortedDesiredWatchedAttributes[i]);
-}
-
-async function checkMultipleSubscriptions(notificationUrl) {
-    let subscriptions = await getSubscriptions()
-    console.log(JSON.stringify(subscriptions, null, 2))
-    let count = 0
-    for (let sub of subscriptions) {
-        if (config.orion.purgeSubscriptionsAtStart)
-            await deleteSubscription(sub.id)
-        else if (config.orion.deleteAllDuplicateSubscriptions && (sub.notification?.http?.url === notificationUrl || sub.notification?.endpoint?.uri === notificationUrl)) {
-            if (count > 0) {
-                console.log(`Deleting duplicate subscription with id ${sub.id}`)
-                await deleteSubscription(sub.id)
-            }
-            else
-                count++
-        }
-        else if (
-            (sub.subject?.entities?.[0]?.idPattern === '.*' || (typesCheck(sub.entities) && attributesCheck(sub.watchedAttributes)))
-            &&
-            (sub.notification?.http?.url === notificationUrl || sub.notification?.endpoint?.uri === notificationUrl)
-            &&
-            (!sub.description || sub.description === `Query engine subscription`)
-        ) {
-            if (count > 0) {
-                console.log(`Deleting duplicate subscription with id ${sub.id}`)
-                await deleteSubscription(sub.id)
-            }
-            else
-                count++
         }
     }
-    return count;
+    catch (error) {
+        logger.error("Error polling API:", error)
+    }
 }
 
-module.exports = { createOrionSubscription, getEndpointVersionApi };
+setBasicAuthHeader = (credentials) => {
+    return "Basic " + Buffer.from(credentials.username + ":" + credentials.password).toString('base64');
+}
+
+async function getToken(url, requestType, credentials, authProfile) {
+    if (authProfile === "basic") {
+        const authorization = setBasicAuthHeader(credentials)
+        const response = await axios[requestType.toLowerCase()](url, undefined, {
+            headers: {
+                'Authorization': authorization
+            }
+        });
+        return response
+    }
+}
+
+pollAPI()
+setTimeout(pollAPI, config.apiConnectorConfig.pollInterval)

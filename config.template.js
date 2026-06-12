@@ -27,12 +27,12 @@ module.exports = {
   sessionEndpoint: "http://localhost:5500/api/output?",
   mapID: "",
   orion: {
-    protocol : "http",
+    protocol: "http",
     subscribe: true,
     deleteAllDuplicateSubscriptions: true,
     attrWithUrl: "datasetUrl",
     orionBaseUrl: "http://localhost:1026",
-    hostname : "localhost",
+    hostname: "localhost",
     port: 1026,
     ngsiBrokerUrl: "https://dx-lab.it/",
     notificationUrl: "http://localhost:3000/api/orion/subscribe",
@@ -68,6 +68,7 @@ module.exports = {
   },
   sourceConnectors: {
     minioConnector: true,
+    orionConnector: true,
     apiConnector: true
   },
   queryOptions: {
@@ -75,5 +76,28 @@ module.exports = {
     advancedSearch: true,
     SQLQuery: true,
     graphQLQuery: true
+  },
+  apiConnectorConfig: {
+    pollInterval: 1000*60*60*24/*,
+    apiUrls: [
+      {
+        name: "Example API",
+        url: "https://example.com/api/data",
+        headers: {
+          "Authorization": {
+            type: "bearerToken",
+            authProfile: "basic",
+            credentials: {
+              username: "username",
+              password: "password"
+            },
+            authUrl: {
+              value: "https://example.com/api/token",
+              requestType: "POST"
+            }
+          }
+        }
+      }
+    ]*/
   }
 }

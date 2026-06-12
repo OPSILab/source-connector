@@ -23,6 +23,8 @@ mongoose.connect(config.mongo, { useNewUrlParser: true, useUnifiedTopology: true
             common.verifyLostSubscriptionOrion().then(() => {
                 logger.info("lost subscription verified")
             })
+        if (config.sourceConnectors.apiConnector)
+            require("./inputConnectors/apiConnector")
     });
     logger.info(`Node.js version: ${process.version}`);
 })
