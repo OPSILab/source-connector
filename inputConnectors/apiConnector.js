@@ -106,14 +106,23 @@ setBasicAuthHeader = (credentials) => {
 async function getToken(url, requestType, credentials, authProfile) {
     if (authProfile === "basic") {
         const authorization = setBasicAuthHeader(credentials)
-        const response = await axios[requestType.toLowerCase()](url, undefined, {
+        return await axios[requestType.toLowerCase()](url, undefined, {
             headers: {
                 'Authorization': authorization
             }
         });
-        return response
+    }
+    else if (authProfile == "OAuth 2.0 – Client Credentials Grant") {
+        return await axios.post(url,
+            "client_id=" + credentials.client_id + "&client_secret=" + credentials.client_secret + "&grant_type=client_credentials",
+            {
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
+            }
+        );
     }
 }
 
 pollAPI()
-setTimeout(pollAPI, config.apiConnectorConfig.pollInterval)
+setInterval(pollAPI, config.apiConnectorConfig.pollInterval)

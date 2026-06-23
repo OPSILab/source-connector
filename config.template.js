@@ -96,6 +96,18 @@ module.exports = {
               value: "https://example.com/api/token",
               requestType: "POST"
             }
+          },
+          "Authorization": {
+            type: "bearerToken",
+            authProfile: "OAuth 2.0 – Client Credentials Grant",
+            credentials: {
+              client_id: "username",
+              client_secret: "password"
+            },
+            authUrl: {
+              value: "https://example.com/api/token",
+              requestType: "POST"
+            }
           }
         }
       }

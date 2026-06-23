@@ -230,6 +230,8 @@ async function executeRequest(req, res) {
                 );
                 logger.debug("Dimension object saved/updated:", dimensionObject);
               }
+              else if (chunkIndex === 0)
+                logger.warn("No datapoints found in the first chunk, skipping insertion.");
             }
             correctlyInserted = true;
           } catch (error) {
