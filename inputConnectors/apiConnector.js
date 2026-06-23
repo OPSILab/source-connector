@@ -21,6 +21,7 @@ async function pollAPI() {
                                 //headers[header] = api.headers[header].value
                                 continue
                             }
+                            logger.info(api.headers[header], api.headers[header].authProfile)
                             const response = await getToken(api.headers[header].authUrl.value, api.headers[header].authUrl.requestType, api.headers[header].credentials, api.headers[header].authProfile)
                             logger.info("Token got", response?.data || "No response")
                             api.headers[header].value = "Bearer " + response.data.access_token
