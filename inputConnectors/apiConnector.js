@@ -58,7 +58,7 @@ async function pollAPI() {
                         })
                         logger.info("api ", batchUrl, "called with ", {
                             headers
-                        }, { response: response?.data?.length || "no response" })
+                        }, { response: response?.data?.length || response.data || "no response" })
                         logger.info(`Data from ${api.name} API (batch ${batchValue}):`, response.data.length)
                         if (config.apiConnectorConfig.upsertRecords) {
                             await Source.deleteMany({ source: batchUrl })
@@ -82,7 +82,7 @@ async function pollAPI() {
                     })
                     logger.info("api ", api.url, "called awith ", {
                         headers
-                    }, { response: response?.data?.length || "no response" })
+                    }, { response: response?.data?.length || response.data || "no response" })
                     logger.info(`Data from ${api.name} API:`, response.data.length)
                     await Source.deleteMany({ source: api.url })
                     await Source.insertMany(response.data.map(item => ({ ...item, source: api.url })))
