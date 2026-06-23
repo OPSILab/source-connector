@@ -22,6 +22,7 @@ async function pollAPI() {
                                 continue
                             }
                             const response = await getToken(api.headers[header].authUrl.value, api.headers[header].authUrl.requestType, api.headers[header].credentials, api.headers[header].authProfile)
+                            logger.debug("Token got")
                             api.headers[header].value = "Bearer " + response.data.access_token
                             //headers[header] = api.headers[header].value
                             tokens[api.headers[header].authUrl.value] = {
@@ -54,6 +55,9 @@ async function pollAPI() {
                         const response = await axios.get(batchUrl, {
                             headers
                         })
+                        logger.debug("api ", batchUrl, "called with ", {
+                            headers
+                        }, {response})
                         logger.info(`Data from ${api.name} API (batch ${batchValue}):`, response.data.length)
                         if (config.apiConnectorConfig.upsertRecords) {
                             await Source.deleteMany({ source: batchUrl })
@@ -75,6 +79,9 @@ async function pollAPI() {
                     const response = await axios.get(api.url, {
                         headers
                     })
+                    logger.debug("api ", api.url, "called with ", {
+                        headers
+                    }, {response})
                     logger.info(`Data from ${api.name} API:`, response.data.length)
                     await Source.deleteMany({ source: api.url })
                     await Source.insertMany(response.data.map(item => ({ ...item, source: api.url })))
@@ -87,7 +94,6 @@ async function pollAPI() {
                     logger.error("Data:", error.response.data)
                     logger.error("Headers:", error.request.headers)
                     logger.error("Request:", error.request)
-                    process.exit()
                 }
                 else
                     logger.error(error)
