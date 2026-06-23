@@ -22,7 +22,7 @@ async function pollAPI() {
                                 continue
                             }
                             const response = await getToken(api.headers[header].authUrl.value, api.headers[header].authUrl.requestType, api.headers[header].credentials, api.headers[header].authProfile)
-                            logger.debug("Token got")
+                            logger.info("Token got", response?.data || "No response")
                             api.headers[header].value = "Bearer " + response.data.access_token
                             //headers[header] = api.headers[header].value
                             tokens[api.headers[header].authUrl.value] = {
@@ -55,9 +55,9 @@ async function pollAPI() {
                         const response = await axios.get(batchUrl, {
                             headers
                         })
-                        logger.debug("api ", batchUrl, "called with ", {
+                        logger.info("api ", batchUrl, "called with ", {
                             headers
-                        }, {response})
+                        }, { response: response?.data.lenght || "no response" })
                         logger.info(`Data from ${api.name} API (batch ${batchValue}):`, response.data.length)
                         if (config.apiConnectorConfig.upsertRecords) {
                             await Source.deleteMany({ source: batchUrl })
@@ -79,9 +79,9 @@ async function pollAPI() {
                     const response = await axios.get(api.url, {
                         headers
                     })
-                    logger.debug("api ", api.url, "called with ", {
+                    logger.info("api ", api.url, "called awith ", {
                         headers
-                    }, {response})
+                    }, { response: response?.data?.lenght || "no response" })
                     logger.info(`Data from ${api.name} API:`, response.data.length)
                     await Source.deleteMany({ source: api.url })
                     await Source.insertMany(response.data.map(item => ({ ...item, source: api.url })))
@@ -128,6 +128,8 @@ async function getToken(url, requestType, credentials, authProfile) {
             }
         );
     }
+    else
+        throw new Error("No auth profile detected")
 }
 
 pollAPI()
