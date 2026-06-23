@@ -119,7 +119,7 @@ async function getToken(url, requestType, credentials, authProfile) {
             }
         });
     }
-    else if (authProfile == "OAuth 2.0 – Client Credentials Grant") {
+    else if (authProfile == "OAuth 2.0 Client Credentials Grant") {
         return await axios.post(url,
             "client_id=" + credentials.client_id + "&client_secret=" + credentials.client_secret + "&grant_type=client_credentials",
             {
