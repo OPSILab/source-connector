@@ -58,7 +58,7 @@ async function pollAPI() {
                         })
                         logger.info("api ", batchUrl, "called with ", {
                             headers
-                        }, { response: response?.data.length || "no response" })
+                        }, { response: response?.data?.length || "no response" })
                         logger.info(`Data from ${api.name} API (batch ${batchValue}):`, response.data.length)
                         if (config.apiConnectorConfig.upsertRecords) {
                             await Source.deleteMany({ source: batchUrl })
