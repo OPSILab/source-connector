@@ -99,7 +99,7 @@ module.exports = {
           },
           "Authorization": {
             type: "bearerToken",
-            authProfile: "OAuth 2.0 – Client Credentials Grant",
+            authProfile: "OAuth 2.0 Client Credentials Grant",
             credentials: {
               client_id: "username",
               client_secret: "password"
