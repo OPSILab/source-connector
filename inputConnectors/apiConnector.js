@@ -4,6 +4,17 @@ const axios = require('axios')
 const Source = require("../api/models/Models").Source
 let tokens = {}
 
+function dbHasSameData(obj1, obj2) {
+    //logger.info("Comparing objects:", JSON.stringify(obj1), JSON.stringify(obj2), JSON.stringify(obj1) == JSON.stringify(obj2))
+    return JSON.stringify(obj1) == JSON.stringify(obj2)
+}
+
+function makeItem(item, source) {
+    let sourceId = item.id
+    delete item.id
+    return { ...item, source: source, sourceId: sourceId }
+}
+
 async function pollAPI() {
     try {
         const urls = config.apiConnectorConfig.apiUrls
@@ -40,7 +51,7 @@ async function pollAPI() {
                 if (api.bearerPosition)
                     headers[api.bearerPosition] = api.headers[api.bearerPosition].value
 
-                if (api.headers.Authorization && api.headers.Authorization.type === "basic" && api.headers.Authorization.alwaysSend)
+                if (api.headers?.Authorization && api.headers.Authorization.type === "basic" && api.headers.Authorization.alwaysSend)
                     headers.Authorization = setBasicAuthHeader(api.headers.Authorization.credentials)
 
                 if (api.batch) {
@@ -62,18 +73,60 @@ async function pollAPI() {
                         logger.info(`Data from ${api.name} API (batch ${batchValue}):`, response.data.length)
                         if (config.apiConnectorConfig.upsertRecords) {
                             await Source.deleteMany({ source: batchUrl })
-                            await Source.insertMany(response.data.map(item => ({ ...item, source: batchUrl })))
+                            await Source.insertMany(response.data.map(item => makeItem(item, batchUrl)))
                         }
                         else {
                             let existingSources = (await Source.find({ source: batchUrl }).lean())
                             existingSources.forEach(item => delete item._id)
-                            const newSources = response.data.map(item => ({ ...item, source: batchUrl }))
-                            const sourcesToInsert = newSources.filter(newItem => !existingSources.some(existingItem => JSON.stringify(existingItem) === JSON.stringify(newItem)))
-                            if (sourcesToInsert.length > 0)
+                            const newSources = response.data.map(item => makeItem(item, batchUrl))
+                            const sourcesToInsert = newSources.filter(newItem => !existingSources.some(existingItem => dbHasSameData(existingItem, newItem)))
+                            if (sourcesToInsert.length > 0) {
                                 await Source.insertMany(sourcesToInsert)
+                                logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API (batch ${batchValue})`)
+                            }
+                            else
+                                logger.info(`No new records to insert for ${api.name} API (batch ${batchValue})`)
 
                         }
                     }
+                }
+                else if (api.pagination) {
+                    /*api.url = api.url
+                        .replace("{offsetParam}", api.pagination.offsetParam)
+                        .replace("{limitParam}", api.pagination.limitParam)
+                        .replace("{offset}", api.pagination.offset || 0)
+                        .replace("{limit}", api.pagination.limit)*/
+                    let response
+                    do {
+                        let urlWithParams = api.url + (api.url.includes("?") ? "&" : "?") + `${api.pagination.limitParam}=${api.pagination.limit}&${api.pagination.offsetParam}=${api.pagination.offset}`
+                        response = await axios.get(urlWithParams, { headers })
+                        logger.info(`Data from ${api.name} API:`, response.data.length)
+                        if (config.apiConnectorConfig.upsertRecords) {
+                            await Source.deleteMany({ source: api.url })
+                            await Source.insertMany(response.data.map(item => makeItem(item, api.url)))
+                        }
+                        else {
+                            let existingSources = (await Source.find({ source: api.url }).lean())
+                            existingSources.forEach(item => delete item._id)
+                            const newSources = response.data.map(item => makeItem(item, api.url))
+                            const sourcesToInsert = newSources.filter(newItem => !existingSources.some(existingItem => dbHasSameData(existingItem, newItem)))
+                            if (sourcesToInsert.length > 0) {
+                                await Source.insertMany(sourcesToInsert)
+                                logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API`)
+                            }
+                            else
+                                logger.info(`No new records to insert for ${api.name} API`)
+
+                        }
+                        api.pagination.offset += api.pagination.limit
+                        /*api.url.split("?")[1].split("&").forEach(param => {
+                            const [key, value] = param.split("=")
+                            if (key === api.pagination.offsetParam)
+                                api.url = api.url.replace(`${key}=${value}`, `${key}=${parseInt(value) + api.pagination.limit}`)
+                        })*/
+
+                    } while (api.pagination.condition(response));
+
                 }
                 else {
 
@@ -84,8 +137,23 @@ async function pollAPI() {
                         headers
                     }, { response: response?.data?.length || response.data || "no response" })
                     logger.info(`Data from ${api.name} API:`, response.data.length)
-                    await Source.deleteMany({ source: api.url })
-                    await Source.insertMany(response.data.map(item => ({ ...item, source: api.url })))
+                    if (config.apiConnectorConfig.upsertRecords) {
+                        await Source.deleteMany({ source: api.url })
+                        await Source.insertMany(response.data.map(item => makeItem(item, api.url)))
+                    }
+                    else {
+                        let existingSources = (await Source.find({ source: api.url }).lean())
+                        existingSources.forEach(item => delete item._id)
+                        const newSources = response.data.map(item => makeItem(item, api.url))
+                        const sourcesToInsert = newSources.filter(newItem => !existingSources.some(existingItem => dbHasSameData(existingItem, newItem)))
+                        if (sourcesToInsert.length > 0) {
+                            await Source.insertMany(sourcesToInsert)
+                            logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API`)
+                        }
+                        else
+                            logger.info(`No new records to insert for ${api.name} API`)
+
+                    }
                 }
             }
             catch (error) {

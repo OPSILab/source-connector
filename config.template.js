@@ -110,7 +110,26 @@ module.exports = {
             }
           }
         }
-      }
+      },            
+      {
+                name: "Orion pagination test",
+                pagination: {
+                    offsetParam: "offset",
+                    limitParam: "limit",
+                    limit: 2,
+                    offset: 0,
+                    condition: (response) => (response.data.length > 0)
+                },
+                url: "http://localhost:1026/ngsi-ld/v1/entities?type=DistributionDCAT-AP",
+      },
+      {
+                name: "Get batch example",
+                batch: {
+                    from: "http://url-to-get-batch.com/api/batch",
+                    param: "id"
+                },
+                url: "https://url-to-use-batch/{batch}"
+            }
     ]*/
   }
 }
