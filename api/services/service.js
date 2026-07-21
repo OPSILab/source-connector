@@ -81,6 +81,10 @@ async function executeRequest(req, res) {
     let existingEntity = id ?
       await Entity.findOne({ entityId: id }) :
       await Entity.findOne(ent)
+    if(!existingEntity)
+      existingEntity = await Entity.findOne({ [`${attrWithUrl}.value`]: downloadURL })
+    if(!existingEntity)
+      existingEntity = await Entity.findOne({ [attrWithUrl]: downloadURL })
     logger.info(`Existing entity: ${existingEntity}`);
     let mustUpdate, mustDownload
     if (existingEntity)
