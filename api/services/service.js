@@ -291,7 +291,7 @@ async function executeRequest(req, res) {
     logger.info(`downloaded ${downloadURL}`);
     if (correctlyInserted)
       if (mustUpdate)
-        await Entity.findOneAndUpdate({ entityId: id }, { ...ent, entityId: id })
+        await Entity.findOneAndUpdate({ _id: existingEntity._id }, { ...ent, entityId: id })
       else if (mustDownload)
         await Entity.insertMany([{ ...ent, entityId: id }])
   }
