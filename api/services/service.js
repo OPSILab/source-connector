@@ -73,7 +73,7 @@ async function executeRequest(req, res) {
     if (!downloadURL) {
       downloadURL = extractDownloadURL(ent)
       if (!downloadURL || typeof downloadURL !== "string") {
-        console.warn(`no URL found for entity ${id}`);
+        logger.warn(`no URL found for entity ${id}`);
         continue;
       }
     }
@@ -81,9 +81,9 @@ async function executeRequest(req, res) {
     let existingEntity = id ?
       await Entity.findOne({ entityId: id }) :
       await Entity.findOne(ent)
-    if(!existingEntity)
+    if (!existingEntity)
       existingEntity = await Entity.findOne({ [`${attrWithUrl}.value`]: downloadURL })
-    if(!existingEntity)
+    if (!existingEntity)
       existingEntity = await Entity.findOne({ [attrWithUrl]: downloadURL })
     logger.info(`Existing entity: ${existingEntity}`);
     let mustUpdate, mustDownload
@@ -93,7 +93,7 @@ async function executeRequest(req, res) {
       mustDownload = true
       logger.info(`Entity ${id} not found in database, mapping...`)
     }
-    if (!mustDownload && !mustUpdate){
+    if (!mustDownload && !mustUpdate) {
       logger.info(`Entity ${id} is up to date, skipping...`)
       continue
     }
@@ -120,62 +120,75 @@ async function executeRequest(req, res) {
         });
     }
     else {
-      let response;
+      let response
       while (retry > 0) {
         try {
-          response = await axios.post(
-            config.mapEndpoint,
-            {
-              sourceDataType: "json",
-              sourceDataURL: downloadURL,
-              decodeOptions: {
-                decodeFrom: format.toLowerCase() === "xml" ? "sdmx-xml" : format.toLowerCase(),
+          let map
+          try {
+            map = await axios.get(config.getMapEndpoint || "http://localhost:5500/api/map", {
+              params: {
+                description: downloadURL
               },
-              config: {
-                NGSI_entity: false,
-                ignoreValidation: true,
-                writers: [],
-                disableAjv: true,
-                mappingReport: true,
-              },
-              dataModel: {
-                $schema: "http://json-schema.org/schema#",
-                $id: "dataModels/DataModelTemp.json",
-                title: "DataModelTemp",
-                description: "Bike Hire Docking Station",
-                type: "object",
-                properties: {
-                  region: {
-                    type: "string",
-                  },
-                  source: {
-                    type: "string",
-                  },
-                  timestamp: {
-                    type: "string",
-                  },
-                  survey: {
-                    type: "string",
-                  },
-                  dimensions: {
-                    type: "object",
-                  },
-                  value: {
-                    type: "integer",
-                  },
-                },
-              },
-            } /*
-                        {
-                            //mapID,
-                            sourceDataURL: downloadURL
-                        }*/,
-            {
               headers: {
                 Authorization: `Bearer ${bearerToken}`,
-              },
+              }
             }
-          );
+            )
+          }
+          catch (error) {
+            if (error.response.status == "404" || error.response.status == 404)
+              logger.warn("No map. Parsing instead")
+          }
+          if (map?.data)
+            response = await axios.post(
+              config.mapEndpoint,
+              {
+                sourceDataType: format.toLowerCase() === "xml" ? "sdmx-xml" : format.toLowerCase(),
+                sourceDataURL: downloadURL,
+                decodeOptions: {
+                  decodeFrom: format.toLowerCase() === "xml" ? "sdmx-xml" : format.toLowerCase(),
+                },
+                config: {
+                  NGSI_entity: false,
+                  ignoreValidation: true,
+                  writers: [],
+                  disableAjv: true,
+                  mappingReport: true,
+                  newSdmxDecode : true
+                },
+                mapDescription: downloadURL
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${bearerToken}`,
+                },
+              }
+            );
+          else
+            response = await axios.post(
+              config.parseEndpoint,
+              //config.mapEndpoint,
+              {
+                sourceDataType: format.toLowerCase() === "xml" ? "sdmx-xml" : format.toLowerCase(),
+                sourceDataURL: downloadURL,
+                decodeOptions: {
+                  decodeFrom: format.toLowerCase() === "xml" ? "sdmx-xml" : format.toLowerCase(),
+                },
+                config: {
+                  NGSI_entity: false,
+                  ignoreValidation: true,
+                  writers: [],
+                  disableAjv: true,
+                  mappingReport: true,
+                  newSdmxDecode : false
+                },
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${bearerToken}`,
+                },
+              }
+            );
           retry -= 2;
           try {
             logger.info("Inserting datapoints into DB...");
@@ -183,7 +196,7 @@ async function executeRequest(req, res) {
             let outputId = response.data[response.data.length - 1].MAPPING_REPORT.outputId
             let lastId
             let purged = false
-            for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) { // Loop per gestire i chunk
+            for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) {
               //while (response.data[0] || response.data.id) {
               logger.info(response.data.status || response.status)
               logger.info(`Fetching chunk ${chunkIndex} for outputId ${outputId}`);
@@ -194,8 +207,8 @@ async function executeRequest(req, res) {
               })
               if (response.data[0]) {
                 if (!purged && !config.upsertRecords)
-                  await Datapoints.deleteMany({ survey: response.data[0].survey }); // Cancellazione preliminare
-                const dataToInsert = response.data.map((d) => {  // Preparazione dei dati
+                  await Datapoints.deleteMany({ survey: response.data[0].survey });
+                const dataToInsert = response.data.map((d) => {
                   return {
                     ...d,
                     fromUrl: downloadURL,
@@ -205,10 +218,10 @@ async function executeRequest(req, res) {
                   await Datapoints.upsertMany(dataToInsert); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
                 else
                   await Datapoints.insertMany(dataToInsert)
-                lastId = response.data[response.data.length - 1]?._id // Gestione indici per il prossimo loop
+                lastId = response.data[response.data.length - 1]?._id
                 purged = true;
                 const surveyKey = dataToInsert[0].survey.toUpperCase().replace(/\./g, "");
-                const dimensionsFound = await Dimensions.findOne({ survey: surveyKey }); // direttamente un singolo documento
+                const dimensionsFound = await Dimensions.findOne({ survey: surveyKey });
                 const uniqueKeys = new Set();
                 for (const obj of dataToInsert) {
                   for (const key in obj.dimensions) {
@@ -246,12 +259,17 @@ async function executeRequest(req, res) {
             "Error fetching mapped data from API Connector:",
             error.response?.data || error.message
           );
-          try {
-            bearerToken = await updateJWT(true);
-            retry--;
-          } catch (e) {
-            logger.error("Error updating JWT:", e);
-            retry--;
+          if (error.response.status == "403" || error.response.status == 403)
+            try {
+              bearerToken = await updateJWT(true);
+              retry--;
+            } catch (e) {
+              logger.error("Error updating JWT:", e);
+              retry--;
+            }
+          else {
+            retry -= 2
+            break
           }
         }
       }

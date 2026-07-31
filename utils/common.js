@@ -101,45 +101,42 @@ function fastAndPartialOrionizeEntity(ent, recursive) {
   return parsedEnt
 }
 
+// Returns true when `field` has actually changed between the incoming entity
+// and the previously stored one (used to decide whether to trigger the
+// datapoints insertion flow). Handles both NGSI-LD `{type, value}` attributes
+// and plain `key: value` payloads (via extractValue's nested/plain fallback),
+// including nested `@value` temporal structures, with deep-equality for
+// object/array-valued fields.
 function checkField(ent, existingEntity, field) {
-  const check = (
-    !existingEntity
-    ||
-    (
-      existingEntity?.[field]?.value?.["@value"] &&
-      ent?.[field]?.value?.["@value"] &&
-      existingEntity[field].value["@value"] != ent[field].value["@value"]
-    )
-    ||
-    (
-      existingEntity?.[field]?.value && !existingEntity?.[field]?.value?.["@value"] &&
-      ent?.[field]?.value && !ent?.[field]?.value?.["@value"] &&
-      typeof existingEntity[field].value != "object" && typeof ent[field].value != "object" && 
-      !Array.isArray(existingEntity[field].value) && !Array.isArray(ent[field].value) &&
-      existingEntity[field].value != ent[field].value
-    )
-    ||
-    (
-      existingEntity?.[field]?.value && (typeof existingEntity[field].value == "object" || Array.isArray(existingEntity[field].value)) &&
-      ent?.[field]?.value && (typeof ent[field].value == "object" || Array.isArray(ent[field].value)) &&
-      JSON.stringify(existingEntity[field].value) != JSON.stringify(ent[field].value)
-    )
-    ||
-    !existingEntity?.[field]?.value && ent?.[field]?.value
-  )
-  logger.debug("check " + field + ": " + check)
-  return check
+  if (!existingEntity) return true
+  const a = extractValue(ent, field, true) ?? extractValue(ent, field)
+  const b = extractValue(existingEntity, field, true) ?? extractValue(existingEntity, field)
+  if ((a && typeof a == "object") || (b && typeof b == "object"))
+    return JSON.stringify(a) != JSON.stringify(b)
+  return a != b
+}
+
+function extractValue(ent, attr, nestedAttr, defaultValue) {
+  if (nestedAttr)
+    return ent[attr] ?
+      ent[attr].value ?
+        ent[attr].value["@value"] :
+        ent[attr]["@value"] :
+      defaultValue;
+  return ent[attr] ?
+    ent[attr].value ?
+      ent[attr].value :
+      ent[attr] :
+    defaultValue;
+
 }
 
 function checkMustUpdateDistributionDcatAp(ent, existingEntity) {
-  console.log(checkField(ent, existingEntity, "modifiedDate"))
-  console.log(checkField(ent, existingEntity, "byteSize"))
-  console.log(checkField(ent, existingEntity, "checksum"))
-  return (
-    checkField(ent, existingEntity, "modifiedDate") ||
-    checkField(ent, existingEntity, "byteSize") ||
-    checkField(ent, existingEntity, "checksum")
-  )
+  const modifiedDateChanged = checkField(ent, existingEntity, "modifiedDate")
+  const byteSizeChanged = checkField(ent, existingEntity, "byteSize")
+  const checksumChanged = checkField(ent, existingEntity, "checksum")
+  logger.debug(`checkMustUpdateDistributionDcatAp: modifiedDate=${modifiedDateChanged} byteSize=${byteSizeChanged} checksum=${checksumChanged}`)
+  return modifiedDateChanged || byteSizeChanged || checksumChanged
 }
 
 module.exports = {

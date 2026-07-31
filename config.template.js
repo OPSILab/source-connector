@@ -24,6 +24,8 @@ module.exports = {
     port: 5432
   },
   mapEndpoint: "http://localhost:5500/api/map/transform",
+  parseEndpoint: "http://localhost:5500/api/parse",
+  getMapEndpoint: "http://localhost:5500/api/map",
   sessionEndpoint: "http://localhost:5500/api/output?",
   mapID: "",
   orion: {
