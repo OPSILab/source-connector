@@ -125,6 +125,7 @@ async function executeRequest(req, res) {
         try {
           let map
           try {
+            logger.debug("Fetching map from API Connector for downloadURL:", downloadURL);
             map = await axios.get(config.getMapEndpoint || "http://localhost:5500/api/map", {
               params: {
                 description: downloadURL
@@ -136,8 +137,11 @@ async function executeRequest(req, res) {
             )
           }
           catch (error) {
-            if (error.response.status == "404" || error.response.status == 404)
+            logger.debug("Error fetching map from API Connector:", error.response?.data || error.message);
+            if (error.response?.status == "404" || error.response?.status == 404)
               logger.warn("No map. Parsing instead")
+            else 
+              logger.error("Error fetching map from API Connector:", error.response?.data || error.message);
           }
           if (map?.data)
             response = await axios.post(
@@ -154,7 +158,8 @@ async function executeRequest(req, res) {
                   writers: [],
                   disableAjv: true,
                   mappingReport: true,
-                  newSdmxDecode : true
+                  newSdmxDecode : true//,
+                  //mappingMode: "light"
                 },
                 mapDescription: downloadURL
               },
@@ -198,7 +203,7 @@ async function executeRequest(req, res) {
             let purged = false
             for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) {
               //while (response.data[0] || response.data.id) {
-              logger.info(response.data.status || response.status)
+              logger.info(response.data?.status || response.status || response.statusCode || response.data || response);
               logger.info(`Fetching chunk ${chunkIndex} for outputId ${outputId}`);
               response = await axios.get((config.sessionEndpoint || "http://localhost:5500/api/output?") + "id=" + outputId + "&lastId=" + lastId + "&index=" + chunkIndex, {
                 headers: {
@@ -259,7 +264,7 @@ async function executeRequest(req, res) {
             "Error fetching mapped data from API Connector:",
             error.response?.data || error.message
           );
-          if (error.response.status == "403" || error.response.status == 403)
+          if (error.response?.status == "403" || error.response?.status == 403)
             try {
               bearerToken = await updateJWT(true);
               retry--;
