@@ -11,7 +11,8 @@ async function updateJWT(update) {
     if (!update)
         try {
             token = require("." + path);
-            return token;
+            if (token)
+                return token;
         } catch (error) {
             console.error("Error loading token:", error);
         }

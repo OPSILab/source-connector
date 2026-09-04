@@ -12,6 +12,7 @@ const Entity = require("../models/Entity")
 const { sleep, verifyLostSubscription, checkMustUpdateDistributionDcatAp, fastAndPartialOrionizeEntity } = require("../../utils/common")
 updateJWT()
   .then((token) => {
+    logger.debug("Obtained Keycloak token:", token);
     bearerToken = token;
     logger.info("Initial Keycloak token obtained");
   })
@@ -124,6 +125,15 @@ async function executeRequest(req, res) {
       while (retry > 0) {
         try {
           let map
+          let maxWaitingTime = 100000; // Maximum waiting time in milliseconds
+          while(!bearerToken) {
+            logger.info("Waiting for bearer token to be available...");
+            await sleep(1000);
+            maxWaitingTime -= 1000;
+            if (maxWaitingTime <= 0) {
+              throw new Error("Bearer token not available after waiting for 100 seconds.");
+            }
+          }
           try {
             logger.debug("Fetching map from API Connector for downloadURL:", downloadURL);
             map = await axios.get(config.getMapEndpoint || "http://localhost:5500/api/map", {
