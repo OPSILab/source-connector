@@ -128,6 +128,39 @@ async function pollAPI() {
                     } while (api.pagination.condition(response));
 
                 }
+                else if (api.incremental) {
+                    const lastRecord = await Source.findOne({ source: api.url }).sort({ datePolled: -1 }).lean()
+                    const currentDate = new Date()
+                    currentDate.setDate(currentDate.getDate() - 1) // Subtract 1 day from current date to avoid timezone issues
+                    let queryParams = { [api.incrementalParams.endDateParam]: currentDate.toISOString().split("T")[0] }
+                    let lastRecordDate
+                    if (lastRecord) {
+                        lastRecordDate = new Date(lastRecord["datePolled"])
+                        lastRecordDate.setDate(lastRecordDate.getDate() - 1) // Subtract 1 day from last record date to avoid timezone issues
+                        queryParams[api.incrementalParams.startDateParam] = lastRecordDate.toISOString().split("T")[0]
+                    }
+                    else {
+                        logger.info(`No records found for ${api.name} API, polling all records...`)
+                    }
+                    if (lastRecord && lastRecordDate && lastRecordDate.toDateString() === currentDate.toDateString()) {
+                        logger.info(`No new records to poll for ${api.name} API (last record date: ${lastRecordDate.toISOString()})`)
+                    }
+                    else {
+                        logger.info(`Polling ${api.name} API for records after ${lastRecordDate?.toISOString()}...`)
+                        const response = await axios.get(api.url, {
+                            headers,
+                            params: queryParams
+                        })
+                        if (!Array.isArray(response.data))
+                            response.data = [response.data]
+                        if (response.data.length > 0) {
+                            logger.info(`Data from ${api.name} API:`, response.data.length)
+                            await Source.insertMany(response.data.map(item => makeItem({ ...item, datePolled: new Date() }, api.url)))
+                        }
+                        else
+                            logger.info(`No new records found for ${api.name} API (last record date: ${lastRecordDate?.toISOString()})`)
+                    }
+                }
                 else {
 
                     const response = await axios.get(api.url, {
