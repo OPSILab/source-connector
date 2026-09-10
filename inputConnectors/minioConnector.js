@@ -356,6 +356,8 @@ async function insertInDBs(newObject, record, align) {
 
   if (config.queryOptions.SQLQuery) {
     let table = common.urlEncode(record?.s3?.bucket?.name || record.bucketName)
+    if(table == "default")
+      table = "default_table"
     //let queryTable = createTable(table)
     client.query("SELECT * FROM " + table + " WHERE name = '" + queryName + "'", async (err, res) => {
       if (err) {
