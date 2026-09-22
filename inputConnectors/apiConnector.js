@@ -15,6 +15,13 @@ function makeItem(item, source) {
     return { ...item, source: source, sourceId: sourceId }
 }
 
+function setDate(currentDate, format) {
+    if (format === "YYYY-MM-DD")
+        return currentDate.toISOString().split("T")[0]
+    if (format === "millis")
+        return Math.floor(currentDate.getTime())
+}
+
 async function pollAPI() {
     try {
         const urls = config.apiConnectorConfig.apiUrls
@@ -71,6 +78,8 @@ async function pollAPI() {
                             headers
                         }, { response: response?.data?.length || response.data || "no response" })
                         logger.info(`Data from ${api.name} API (batch ${batchValue}):`, response.data.length)
+                        if (!Array.isArray(response.data))
+                            response.data = [response.data]
                         if (config.apiConnectorConfig.upsertRecords) {
                             await Source.deleteMany({ source: batchUrl })
                             await Source.insertMany(response.data.map(item => makeItem(item, batchUrl)))
@@ -101,6 +110,8 @@ async function pollAPI() {
                         let urlWithParams = api.url + (api.url.includes("?") ? "&" : "?") + `${api.pagination.limitParam}=${api.pagination.limit}&${api.pagination.offsetParam}=${api.pagination.offset}`
                         response = await axios.get(urlWithParams, { headers })
                         logger.info(`Data from ${api.name} API:`, response.data.length)
+                        if (!Array.isArray(response.data))
+                            response.data = [response.data]
                         if (config.apiConnectorConfig.upsertRecords) {
                             await Source.deleteMany({ source: api.url })
                             await Source.insertMany(response.data.map(item => makeItem(item, api.url)))
@@ -132,12 +143,14 @@ async function pollAPI() {
                     const lastRecord = await Source.findOne({ source: api.url }).sort({ datePolled: -1 }).lean()
                     const currentDate = new Date()
                     currentDate.setDate(currentDate.getDate() - 1) // Subtract 1 day from current date to avoid timezone issues
-                    let queryParams = { [api.incrementalParams.endDateParam]: currentDate.toISOString().split("T")[0] }
+                    let queryParams = { [api.incrementalParams.endDateParam]: setDate(currentDate, api.incrementalParams.endDateFormat)}//currentDate.toISOString().split("T")[0] }
+                    if (api.queryParams)
+                        queryParams = { ...queryParams, ...api.queryParams }
                     let lastRecordDate
                     if (lastRecord) {
                         lastRecordDate = new Date(lastRecord["datePolled"])
                         lastRecordDate.setDate(lastRecordDate.getDate() - 1) // Subtract 1 day from last record date to avoid timezone issues
-                        queryParams[api.incrementalParams.startDateParam] = lastRecordDate.toISOString().split("T")[0]
+                        queryParams[api.incrementalParams.startDateParam] = setDate(currentDate, api.incrementalParams.startDateFormat) 
                     }
                     else {
                         logger.info(`No records found for ${api.name} API, polling all records...`)
@@ -170,6 +183,8 @@ async function pollAPI() {
                         headers
                     }, { response: response?.data?.length || response.data || "no response" })
                     logger.info(`Data from ${api.name} API:`, response.data.length)
+                    if (!Array.isArray(response.data))
+                        response.data = [response.data]
                     if (config.apiConnectorConfig.upsertRecords) {
                         await Source.deleteMany({ source: api.url })
                         await Source.insertMany(response.data.map(item => makeItem(item, api.url)))
@@ -177,6 +192,8 @@ async function pollAPI() {
                     else {
                         let existingSources = (await Source.find({ source: api.url }).lean())
                         existingSources.forEach(item => delete item._id)
+                        if (!Array.isArray(response.data))
+                            response.data = [response.data]
                         const newSources = response.data.map(item => makeItem(item, api.url))
                         const sourcesToInsert = newSources.filter(newItem => !existingSources.some(existingItem => dbHasSameData(existingItem, newItem)))
                         if (sourcesToInsert.length > 0) {
