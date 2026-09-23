@@ -1,3 +1,4 @@
+process.percocologger = require("./percocologger.config");
 const common = require("./utils/common")
 const config = common.checkConfig(require('./config'), require('./config.template'))
 const mongoose = require("mongoose");

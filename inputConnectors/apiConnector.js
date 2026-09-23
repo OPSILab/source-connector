@@ -159,14 +159,14 @@ async function pollAPI() {
                     const currentDate = new Date()
                     let endDate = new Date()
                     if (api.incrementalParams.endDateLogic != "inclusive")
-                        endDate.setDate(endDate.getDate() + 1) // Subtract 1 day from current date to avoid timezone issues
+                        endDate.setDate(endDate.getDate() + 1) 
                     let queryParams = { [api.incrementalParams.endDateParam]: setDate(endDate, api.incrementalParams.endDateFormat) }//currentDate.toISOString().split("T")[0] }
                     if (api.queryParams)
                         queryParams = { ...queryParams, ...api.queryParams }
                     let lastRecordDate
                     if (lastRecord) {
                         lastRecordDate = new Date(lastRecord["datePolled"])
-                        lastRecordDate.setDate(lastRecordDate.getDate() - 1) // Subtract 1 day from last record date to avoid timezone issues
+                        lastRecordDate.setDate(lastRecordDate.getDate() - 1) 
                         let startDate = new Date()
                         if (api.incrementalParams.startDateLogic != "inclusive")
                             startDate.setDate(startDate.getDate() - 2)
@@ -177,7 +177,8 @@ async function pollAPI() {
                     else {
                         logger.info(`No records found for ${api.name} API, polling all records...`)
                     }
-                    if (lastRecord && lastRecordDate && lastRecordDate.toDateString() === currentDate.toDateString()) {
+                    logger.debug(lastRecordDate.toISOString().split("T")[0] , " ", currentDate.toISOString().split("T")[0])
+                    if (lastRecord && lastRecordDate && lastRecordDate.toISOString().split("T")[0] === currentDate.toISOString().split("T")[0]) {
                         logger.info(`No new records to poll for ${api.name} API (last record date: ${lastRecordDate.toISOString()})`)
                     }
                     else {
@@ -190,7 +191,7 @@ async function pollAPI() {
                             response.data = [response.data]
                         if (response.data.length > 0) {
                             logger.info(`Data from ${api.name} API:`, response.data.length)
-                            await Source.insertMany(response.data.map(item => makeItem({ ...item, datePolled: new Date() }, api.url)))
+                            await Source.insertMany(response.data.map(item => makeItem({ ...item, datePolled: currentDate }, api.url)))
                         }
                         else
                             logger.info(`No new records found for ${api.name} API (last record date: ${lastRecordDate?.toISOString()})`)
