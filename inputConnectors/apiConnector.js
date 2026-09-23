@@ -157,15 +157,22 @@ async function pollAPI() {
                 else if (api.incremental) {
                     const lastRecord = await Source.findOne({ source: api.url }).sort({ datePolled: -1 }).lean()
                     const currentDate = new Date()
-                    currentDate.setDate(currentDate.getDate() - 1) // Subtract 1 day from current date to avoid timezone issues
-                    let queryParams = { [api.incrementalParams.endDateParam]: setDate(currentDate, api.incrementalParams.endDateFormat) }//currentDate.toISOString().split("T")[0] }
+                    let endDate = new Date()
+                    if (api.incrementalParams.endDateLogic != "inclusive")
+                        endDate.setDate(endDate.getDate() + 1) // Subtract 1 day from current date to avoid timezone issues
+                    let queryParams = { [api.incrementalParams.endDateParam]: setDate(endDate, api.incrementalParams.endDateFormat) }//currentDate.toISOString().split("T")[0] }
                     if (api.queryParams)
                         queryParams = { ...queryParams, ...api.queryParams }
                     let lastRecordDate
                     if (lastRecord) {
                         lastRecordDate = new Date(lastRecord["datePolled"])
                         lastRecordDate.setDate(lastRecordDate.getDate() - 1) // Subtract 1 day from last record date to avoid timezone issues
-                        queryParams[api.incrementalParams.startDateParam] = setDate(currentDate, api.incrementalParams.startDateFormat)
+                        let startDate = new Date()
+                        if (api.incrementalParams.startDateLogic != "inclusive")
+                            startDate.setDate(startDate.getDate() - 2)
+                        else 
+                            startDate.setDate(startDate.getDate() - 1)
+                        queryParams[api.incrementalParams.startDateParam] = setDate(startDate, api.incrementalParams.startDateFormat)
                     }
                     else {
                         logger.info(`No records found for ${api.name} API, polling all records...`)
