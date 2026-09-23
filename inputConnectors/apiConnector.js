@@ -22,6 +22,17 @@ function setDate(currentDate, format) {
         return Math.floor(currentDate.getTime())
 }
 
+function getValueFromParam(obj, param) {//item[api.batch.param]
+    if (Array.isArray(param)) {
+        let value = obj
+        for (const p of param) {
+            value = value[p]
+        }
+        return value
+    }
+    return obj[param]
+}
+
 async function pollAPI() {
     try {
         const urls = config.apiConnectorConfig.apiUrls
@@ -66,7 +77,11 @@ async function pollAPI() {
                     const batchResponse = await axios.get(api.batch.from, {
                         headers
                     })
-                    const batchValues = batchResponse.data.map(item => item[api.batch.param])
+                    let batchValues
+                    if (api.batch.pick)
+                        batchValues = batchResponse.data[api.batch.pick].map(item => getValueFromParam(item, api.batch.param))
+                    else
+                        batchValues = batchResponse.data.map(item => getValueFromParam(item, api.batch.param))
                     logger.info(`Batch values for ${api.name} API:`, batchValues)
                     for (const batchValue of batchValues) {
                         logger.info(`Polling ${api.name} API for batch value:`, batchValue)
@@ -143,14 +158,14 @@ async function pollAPI() {
                     const lastRecord = await Source.findOne({ source: api.url }).sort({ datePolled: -1 }).lean()
                     const currentDate = new Date()
                     currentDate.setDate(currentDate.getDate() - 1) // Subtract 1 day from current date to avoid timezone issues
-                    let queryParams = { [api.incrementalParams.endDateParam]: setDate(currentDate, api.incrementalParams.endDateFormat)}//currentDate.toISOString().split("T")[0] }
+                    let queryParams = { [api.incrementalParams.endDateParam]: setDate(currentDate, api.incrementalParams.endDateFormat) }//currentDate.toISOString().split("T")[0] }
                     if (api.queryParams)
                         queryParams = { ...queryParams, ...api.queryParams }
                     let lastRecordDate
                     if (lastRecord) {
                         lastRecordDate = new Date(lastRecord["datePolled"])
                         lastRecordDate.setDate(lastRecordDate.getDate() - 1) // Subtract 1 day from last record date to avoid timezone issues
-                        queryParams[api.incrementalParams.startDateParam] = setDate(currentDate, api.incrementalParams.startDateFormat) 
+                        queryParams[api.incrementalParams.startDateParam] = setDate(currentDate, api.incrementalParams.startDateFormat)
                     }
                     else {
                         logger.info(`No records found for ${api.name} API, polling all records...`)
