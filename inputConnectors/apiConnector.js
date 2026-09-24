@@ -9,9 +9,36 @@ function dbHasSameData(obj1, obj2) {
     return JSON.stringify(obj1) == JSON.stringify(obj2)
 }
 
+function prepareBackupValues(item, value) {
+    if (item[value] === undefined)
+        return
+
+    const original = value + "_original"
+
+    if (item[original] !== undefined) {
+        if (typeof item[original] === "string" && typeof item[value] === "string")
+            item[original] += " | " + item[value]
+        else{
+            let originalValue 
+            if (item[original] !== null && typeof item[original] === "object")
+                originalValue = JSON.parse(JSON.stringify(item[original]))
+            else
+                originalValue = item[original]
+            item[original] = {
+                original: originalValue,
+                [value]: item[value]
+            }}
+    } else {
+        item[original] = item[value]
+    }
+}
+
+
 function makeItem(item, source) {
     let sourceId = item.id
     delete item.id
+    prepareBackupValues(item, "source")
+    prepareBackupValues(item, "sourceId")
     return { ...item, source: source, sourceId: sourceId }
 }
 
@@ -166,7 +193,7 @@ async function pollAPI() {
                     let lastRecordDate
                     if (lastRecord) {
                         lastRecordDate = new Date(lastRecord["datePolled"])
-                        lastRecordDate.setDate(lastRecordDate.getDate() - 1) 
+                        lastRecordDate.setDate(lastRecordDate.getDate()) 
                         let startDate = new Date()
                         if (api.incrementalParams.startDateLogic != "inclusive")
                             startDate.setDate(startDate.getDate() - 2)

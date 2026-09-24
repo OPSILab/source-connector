@@ -7,6 +7,7 @@ const Source = require('../api/models/Models.js').Source//TODO divide collection
 const Key = require('../api/models/Key')
 const Values = require('../api/models/Value')
 const Entries = require('../api/models/Entries')
+const Status = require('../api/models/Status')
 const minioClient = new Minio.Client(minioConfig)
 const logger = require('percocologger')
 const log = logger.info
@@ -24,15 +25,33 @@ let entities = {
   uniqueKeys: []
 }
 
+async function updateCollectionAndStatus(Collection, insertingSource) {
+  const sourceInserted = await Collection.insertMany(insertingSource)
+  console.log(sourceInserted.map(source => ({
+    refId: source._id,
+    source: "minio"
+  })))
+  //await sleep(10000)
+
+  await Status.insertMany(
+    sourceInserted.map(source => ({
+      refId: source._id,
+      source: "minio"
+    })))
+}
+
 async function sync() {
 
   try {
     if (!syncing) {
       syncing = true
-      await Source.deleteMany({})
-      await Key.deleteMany({})
-      await Values.deleteMany({})
-      await Entries.deleteMany({})
+      const refIds = await Status.distinct("refId", {
+        source: "minio"
+      })
+      await Source.deleteMany({ _id: { $in: refIds } }) //TODO divide collections by email and/or bucket
+      await Key.deleteMany({ _id: { $in: refIds } })
+      await Values.deleteMany({ _id: { $in: refIds } })
+      await Entries.deleteMany({ _id: { $in: refIds } })
       let objects = []
       let buckets = await listBuckets()
       let bucketIndex = 1
@@ -83,7 +102,7 @@ async function sync() {
             visibility: entries_gl[key][value]
           })
       try {
-        if (entriesInDB.length > 0) await Entries.insertMany(entriesInDB);
+        if (entriesInDB.length > 0) await updateCollectionAndStatus(Entries, entriesInDB);//Entries.insertMany(entriesInDB);
       } catch (error) {
         if (!error?.errorResponse?.message?.includes("Document can't have")) {
           log(error);
@@ -110,7 +129,7 @@ async function sync() {
               return fixedEntry;
             });
 
-            await Entries.insertMany(entries);
+            await updateCollectionAndStatus(Entries, entries); //await Entries.insertMany(entries);
           } catch (error) {
             log("There are problems inserting objects in MongoDB");
             log(error);
@@ -136,8 +155,8 @@ async function sync() {
 
       })
       )
-      await Key.insertMany(keysToDB)
-      await Values.insertMany(valuesToDB)
+      await updateCollectionAndStatus(Key, keysToDB)
+      await updateCollectionAndStatus(Values, valuesToDB)
 
       syncing = false
       logger.info("Syncing finished")
@@ -307,7 +326,7 @@ async function getObject(bucketName, objectName, format) {
 }
 
 function checkQueryOptions() {
-  return config.queryOptions.advancedSearch || config.queryOptions.SQLQuery 
+  return config.queryOptions.advancedSearch || config.queryOptions.SQLQuery
   for (let option in config.queryOptions)
     if (option != "simpleSearch" && config.queryOptions[option] === true)
       return true
@@ -356,7 +375,7 @@ async function insertInDBs(newObject, record, align) {
 
   if (config.queryOptions.SQLQuery) {
     let table = common.urlEncode(record?.s3?.bucket?.name || record.bucketName)
-    if(table == "default")
+    if (table == "default")
       table = "default_table"
     //let queryTable = createTable(table)
     client.query("SELECT * FROM " + table + " WHERE name = '" + queryName + "'", async (err, res) => {
@@ -470,13 +489,13 @@ async function insertInDBs(newObject, record, align) {
             { raw: jsonParsed, record, name: record?.s3?.object?.key || record.name }
     ]
     try {
-      await Source.insertMany(insertingSource)
+      await updateCollectionAndStatus(Source, insertingSource) //await Source.insertMany(insertingSource)
     }
     catch (error) {
       if (!error?.errorResponse?.message?.includes("Document can't have"))
         log(error)
       try {
-        await Source.insertMany(JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))
+        updateCollectionAndStatus(Source, JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))//await Source.insertMany(JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))
       }
       catch (error) {
         log("There are problems inserting object in mongo DB")
