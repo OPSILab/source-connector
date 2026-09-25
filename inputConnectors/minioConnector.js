@@ -25,6 +25,8 @@ let entities = {
   uniqueKeys: []
 }
 
+let forbiddenTables = new Set(['users', 'credentials'])
+
 async function updateCollectionAndStatus(Collection, insertingSource) {
   const sourceInserted = await Collection.insertMany(insertingSource)
   console.log(sourceInserted.map(source => ({
@@ -375,10 +377,19 @@ async function insertInDBs(newObject, record, align) {
 
   if (config.queryOptions.SQLQuery) {
     let table = common.urlEncode(record?.s3?.bucket?.name || record.bucketName)
-    if (table == "default")
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table))
+      throw new Error('Invalid table name');
+    else if (forbiddenTables.has(table))
+      throw new Error('Forbidden table');
+    else if (table == "default")
       table = "default_table"
+    else if (table == "status")
+      table = "status_table"
+    else if (table == "sources")
+      table = "sources_table"
+
     //let queryTable = createTable(table)
-    client.query("SELECT * FROM " + table + " WHERE name = '" + queryName + "'", async (err, res) => {
+    client.query("SELECT * FROM " + table + " WHERE name = $1", [queryName], async (err, res) => {
       if (err) {
         log("ERROR searching object in DB");
         log(err);
@@ -394,7 +405,7 @@ async function insertInDBs(newObject, record, align) {
             return;
           }
 
-          client.query(`INSERT INTO ${table} (name, data, record) VALUES ('${record?.s3?.object?.key || record.name}', '${data}', '${JSON.stringify(record)}')`, (err, res) => {
+          client.query(`INSERT INTO ${table} (name, data, record) VALUES ($1, $2, $3)`, [record?.s3?.object?.key || record.name, data, JSON.stringify(record)], (err, res) => {
 
             if (err) {
               log("ERROR inserting object in DB");
@@ -402,7 +413,7 @@ async function insertInDBs(newObject, record, align) {
               postgreFinished = true
               return;
             }
-            log("Object inserted \n");
+            log("Object inserted in postgres\n");
             postgreFinished = true
             return
           });
@@ -424,7 +435,7 @@ async function insertInDBs(newObject, record, align) {
       }
       if (res.rows[0]) {
         log("Objects found ", res.rows.length, " ", JSON.stringify(res.rows[0]).substring(0, 100), "...")//, common.minify(res.rows));
-        client.query(`UPDATE ${table} SET data = '${data}', record = '${JSON.stringify(record)}'  WHERE name = '${record?.s3?.object?.key || record.name}'`, (err, res) => {
+        client.query(`UPDATE ${table} SET data = $1, record = $2  WHERE name = $3`, [data, JSON.stringify(record), record?.s3?.object?.key || record.name], (err, res) => {
           if (err) {
             log("ERROR updating object in DB");
             log(err);
@@ -432,19 +443,19 @@ async function insertInDBs(newObject, record, align) {
             return;
           }
           postgreFinished = true
-          log("Object updated \n");
+          log("Object updated in postgres\n");
           return
         });
       }
       else
-        client.query(`INSERT INTO ${table} (name, data, record) VALUES ('${record?.s3?.object?.key || record.name}', '${data}', '${JSON.stringify(record)}' )`, (err, res) => {
+        client.query(`INSERT INTO ${table} (name, data, record) VALUES ($1, $2, $3)`, [record?.s3?.object?.key || record.name, data, JSON.stringify(record)], (err, res) => {
           if (err) {
             log("ERROR inserting object in DB");
             log(err);
             postgreFinished = true
             return;
           }
-          log("Object inserted \n");
+          log("Object inserted in postgres\n");
           postgreFinished = true
           return
         });
@@ -464,7 +475,10 @@ async function insertInDBs(newObject, record, align) {
 
     try {// TODO better doing an update...
       log("Delete ", (record?.s3?.object?.key || record.name))
-      await Source.deleteMany({ 'name': (record?.s3?.object?.key || record.name) })//record.s3.object
+      const refIds = await Status.distinct("refId", {
+        source: "minio"
+      })
+      await Source.deleteMany({ 'name': (record?.s3?.object?.key || record.name), _id: { $in: refIds } })//record.s3.object
     }
     catch (error) {
       log(error)
@@ -533,9 +547,19 @@ async function insertInDBs(newObject, record, align) {
 async function deleteInDBs(record) {
   let postgreFinished, logCounterFlag
   let table = common.urlEncode(record?.s3?.bucket?.name || record.bucketName)
-  client.query(`DELETE FROM ${table} WHERE name = '${record?.s3?.object?.key || record.name}'`, (err, res) => {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table))
+    throw new Error('Invalid table name');
+  else if (forbiddenTables.has(table))
+    throw new Error('Forbidden table');
+  else if (table == "default")
+    table = "default_table"
+  else if (table == "status")
+    table = "status_table"
+  else if (table == "sources")
+    table = "sources_table"
+  client.query(`DELETE FROM ${table} WHERE name = $1`, [record?.s3?.object?.key || record.name], (err, res) => {
     if (err) {
-      log("ERROR inserting object in DB");
+      log("ERROR deleting object in DB");
       log(err);
       postgreFinished = true
       return;
@@ -558,8 +582,11 @@ async function deleteInDBs(record) {
   }
 
   try {
+    const refIds = await Status.distinct("refId", {
+      source: "minio"
+    })
     log("Delete ", record?.s3?.object?.key || record.name)
-    await Source.deleteMany({ 'name': (record?.s3?.object?.key || record.name) })//record.s3.object
+    await Source.deleteMany({ 'name': (record?.s3?.object?.key || record.name), _id: { $in: refIds } })//record.s3.object
   }
   catch (error) {
     log(error)

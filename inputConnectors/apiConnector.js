@@ -2,11 +2,17 @@ const config = require('../config')
 const logger = require('percocologger')
 const axios = require('axios')
 const Source = require("../api/models/Models").Source
+const { client } = require('./postgresConnector')
 let tokens = {}
 
 function dbHasSameData(obj1, obj2) {
     //logger.info("Comparing objects:", JSON.stringify(obj1), JSON.stringify(obj2), JSON.stringify(obj1) == JSON.stringify(obj2))
     return JSON.stringify(obj1) == JSON.stringify(obj2)
+}
+
+async function waitForPostgreInit() {
+    while (!process.postgreInit || process.postgreInit === "busy")
+        await new Promise(resolve => setTimeout(resolve, 1000))
 }
 
 function prepareBackupValues(item, value) {
@@ -18,8 +24,8 @@ function prepareBackupValues(item, value) {
     if (item[original] !== undefined) {
         if (typeof item[original] === "string" && typeof item[value] === "string")
             item[original] += " | " + item[value]
-        else{
-            let originalValue 
+        else {
+            let originalValue
             if (item[original] !== null && typeof item[original] === "object")
                 originalValue = JSON.parse(JSON.stringify(item[original]))
             else
@@ -27,7 +33,8 @@ function prepareBackupValues(item, value) {
             item[original] = {
                 original: originalValue,
                 [value]: item[value]
-            }}
+            }
+        }
     } else {
         item[original] = item[value]
     }
@@ -58,6 +65,40 @@ function getValueFromParam(obj, param) {//item[api.batch.param]
         return value
     }
     return obj[param]
+}
+
+async function insertToPostgre(data, name, batchValue, url) {
+    if (config.queryOptions.SQLQuery) {
+        await waitForPostgreInit()
+        const values = []
+        for (const [i, item] of data.entries()) {
+            const sourceName =
+                item.name ||
+                item.id ||
+                batchValue ||
+                url//`${batchUrl}${Date.now()}-${i}`
+
+            values.push(
+                sourceName,
+                item,
+                { from: url }
+            )
+        }
+
+        const placeholders = data.map((_, i) => {
+            const n = i * 3
+            return `($${n + 1}, $${n + 2}, $${n + 3})`
+        }).join(', ')
+
+        const query = `INSERT INTO sources (name, data, record) VALUES ${placeholders}`
+        client.query(query, values, (err, res) => {
+            if (err) {
+                logger.error(`Error inserting records for ${name} API`, err)
+                return
+            }
+            logger.info(`Inserted ${data.length} records for ${name} API`)
+        })
+    }
 }
 
 async function pollAPI() {
@@ -125,6 +166,16 @@ async function pollAPI() {
                         if (config.apiConnectorConfig.upsertRecords) {
                             await Source.deleteMany({ source: batchUrl })
                             await Source.insertMany(response.data.map(item => makeItem(item, batchUrl)))
+                            if (config.queryOptions.SQLQuery) {
+                                await waitForPostgreInit()
+                                client.query(`DELETE FROM sources WHERE record->>'from' = $1`, [batchUrl], async (err, res) => {
+                                    if (err) {
+                                        logger.error(`Error deleting records for ${api.name} API (batch ${batchValue}):`, err)
+                                        return
+                                    }
+                                    await insertToPostgre(response.data, api.name, batchValue, batchUrl)
+                                })
+                            }
                         }
                         else {
                             let existingSources = (await Source.find({ source: batchUrl }).lean())
@@ -134,6 +185,7 @@ async function pollAPI() {
                             if (sourcesToInsert.length > 0) {
                                 await Source.insertMany(sourcesToInsert)
                                 logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API (batch ${batchValue})`)
+                                await insertToPostgre(sourcesToInsert, api.name, batchValue, batchUrl)
                             }
                             else
                                 logger.info(`No new records to insert for ${api.name} API (batch ${batchValue})`)
@@ -157,6 +209,16 @@ async function pollAPI() {
                         if (config.apiConnectorConfig.upsertRecords) {
                             await Source.deleteMany({ source: api.url })
                             await Source.insertMany(response.data.map(item => makeItem(item, api.url)))
+                            if (config.queryOptions.SQLQuery) {
+                                await waitForPostgreInit()
+                                client.query(`DELETE FROM sources WHERE record->>'from' = $1`, [api.url], async (err, res) => {
+                                    if (err) {
+                                        logger.error(`Error deleting records for ${api.name}:`, err)
+                                        return
+                                    }
+                                    await insertToPostgre(response.data, api.name, null, api.url)
+                                })
+                            }
                         }
                         else {
                             let existingSources = (await Source.find({ source: api.url }).lean())
@@ -166,6 +228,8 @@ async function pollAPI() {
                             if (sourcesToInsert.length > 0) {
                                 await Source.insertMany(sourcesToInsert)
                                 logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API`)
+                                //TODO use a sourcesToInsertInPostgre instead of sourcesToInsert to avoid inserting duplicates or missing some objects in PostgreSQL
+                                await insertToPostgre(sourcesToInsert, api.name, null, api.url)
                             }
                             else
                                 logger.info(`No new records to insert for ${api.name} API`)
@@ -186,25 +250,25 @@ async function pollAPI() {
                     const currentDate = new Date()
                     let endDate = new Date()
                     if (api.incrementalParams.endDateLogic != "inclusive")
-                        endDate.setDate(endDate.getDate() + 1) 
+                        endDate.setDate(endDate.getDate() + 1)
                     let queryParams = { [api.incrementalParams.endDateParam]: setDate(endDate, api.incrementalParams.endDateFormat) }//currentDate.toISOString().split("T")[0] }
                     if (api.queryParams)
                         queryParams = { ...queryParams, ...api.queryParams }
                     let lastRecordDate
                     if (lastRecord) {
                         lastRecordDate = new Date(lastRecord["datePolled"])
-                        lastRecordDate.setDate(lastRecordDate.getDate()) 
+                        lastRecordDate.setDate(lastRecordDate.getDate())
                         let startDate = new Date()
                         if (api.incrementalParams.startDateLogic != "inclusive")
                             startDate.setDate(startDate.getDate() - 2)
-                        else 
+                        else
                             startDate.setDate(startDate.getDate() - 1)
                         queryParams[api.incrementalParams.startDateParam] = setDate(startDate, api.incrementalParams.startDateFormat)
                     }
                     else {
                         logger.info(`No records found for ${api.name} API, polling all records...`)
                     }
-                    logger.debug(lastRecordDate.toISOString().split("T")[0] , " ", currentDate.toISOString().split("T")[0])
+                    logger.debug(lastRecordDate.toISOString().split("T")[0], " ", currentDate.toISOString().split("T")[0])
                     if (lastRecord && lastRecordDate && lastRecordDate.toISOString().split("T")[0] === currentDate.toISOString().split("T")[0]) {
                         logger.info(`No new records to poll for ${api.name} API (last record date: ${lastRecordDate.toISOString()})`)
                     }
@@ -219,6 +283,7 @@ async function pollAPI() {
                         if (response.data.length > 0) {
                             logger.info(`Data from ${api.name} API:`, response.data.length)
                             await Source.insertMany(response.data.map(item => makeItem({ ...item, datePolled: currentDate }, api.url)))
+                            await insertToPostgre(response.data.map(item => ({ ...item, datePolled: currentDate }, api.url)), api.name, null, api.url)
                         }
                         else
                             logger.info(`No new records found for ${api.name} API (last record date: ${lastRecordDate?.toISOString()})`)
@@ -238,6 +303,16 @@ async function pollAPI() {
                     if (config.apiConnectorConfig.upsertRecords) {
                         await Source.deleteMany({ source: api.url })
                         await Source.insertMany(response.data.map(item => makeItem(item, api.url)))
+                        if (config.queryOptions.SQLQuery) {
+                            await waitForPostgreInit()
+                            client.query(`DELETE FROM sources WHERE record->>'from' = $1`, [api.url], async (err, res) => {
+                                if (err) {
+                                    logger.error(`Error deleting records for ${api.name} API:`, err)
+                                    return
+                                }
+                                await insertToPostgre(response.data, api.name, null, api.url)
+                            })
+                        }
                     }
                     else {
                         let existingSources = (await Source.find({ source: api.url }).lean())
@@ -249,6 +324,7 @@ async function pollAPI() {
                         if (sourcesToInsert.length > 0) {
                             await Source.insertMany(sourcesToInsert)
                             logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API`)
+                            await insertToPostgre(sourcesToInsert, api.name, null, api.url)
                         }
                         else
                             logger.info(`No new records to insert for ${api.name} API`)
