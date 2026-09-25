@@ -2,7 +2,7 @@ const config = require('../config')
 const logger = require('percocologger')
 const axios = require('axios')
 const Source = require("../api/models/Models").Source
-const { client } = require('./postgresConnector')
+const client = require('./postgresConnector')
 let tokens = {}
 
 function dbHasSameData(obj1, obj2) {
@@ -268,7 +268,7 @@ async function pollAPI() {
                     else {
                         logger.info(`No records found for ${api.name} API, polling all records...`)
                     }
-                    logger.debug(lastRecordDate.toISOString().split("T")[0], " ", currentDate.toISOString().split("T")[0])
+                    logger.debug(lastRecordDate?.toISOString().split("T")[0], " ", currentDate.toISOString().split("T")[0])
                     if (lastRecord && lastRecordDate && lastRecordDate.toISOString().split("T")[0] === currentDate.toISOString().split("T")[0]) {
                         logger.info(`No new records to poll for ${api.name} API (last record date: ${lastRecordDate.toISOString()})`)
                     }
@@ -283,7 +283,7 @@ async function pollAPI() {
                         if (response.data.length > 0) {
                             logger.info(`Data from ${api.name} API:`, response.data.length)
                             await Source.insertMany(response.data.map(item => makeItem({ ...item, datePolled: currentDate }, api.url)))
-                            await insertToPostgre(response.data.map(item => ({ ...item, datePolled: currentDate }, api.url)), api.name, null, api.url)
+                            await insertToPostgre(response.data.map(item => makeItem({ ...item, datePolled: currentDate }, api.url)), api.name, null, api.url)
                         }
                         else
                             logger.info(`No new records found for ${api.name} API (last record date: ${lastRecordDate?.toISOString()})`)
@@ -291,7 +291,7 @@ async function pollAPI() {
                 }
                 else {
 
-                    const response = await axios.get(api.url, {
+                    const response = api.method?.toLowerCase() === "post" ? await axios.post(api.url, api.body, { headers }) : await axios.get(api.url, {
                         headers
                     })
                     logger.info("api ", api.url, "called awith ", {
@@ -317,6 +317,9 @@ async function pollAPI() {
                     else {
                         let existingSources = (await Source.find({ source: api.url }).lean())
                         existingSources.forEach(item => delete item._id)
+                        response.data.forEach(item => delete item._id)
+                        logger.info(`Existing records for ${api.name} API:`, existingSources.length)
+                        logger.info(`New records for ${api.name} API:`, response.data.length)
                         if (!Array.isArray(response.data))
                             response.data = [response.data]
                         const newSources = response.data.map(item => makeItem(item, api.url))
@@ -324,6 +327,7 @@ async function pollAPI() {
                         if (sourcesToInsert.length > 0) {
                             await Source.insertMany(sourcesToInsert)
                             logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API`)
+                            response.data.forEach(item => delete item.id)
                             await insertToPostgre(sourcesToInsert, api.name, null, api.url)
                         }
                         else
@@ -338,7 +342,7 @@ async function pollAPI() {
                     logger.error("Status:", error.response.status)
                     logger.error("Data:", error.response.data)
                     logger.error("Headers:", error.request.headers)
-                    logger.error("Request:", error.request)
+                    //logger.error("Request:", error.request)
                 }
                 else
                     logger.error(error)
