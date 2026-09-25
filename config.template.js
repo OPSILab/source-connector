@@ -23,6 +23,13 @@ module.exports = {
     password: '',
     port: 5432
   },
+  postgreReaderConfig: {
+    user: '',
+    host: 'localhost',
+    database: '',
+    password: '',
+    port: 5432, // Porta di default per PostgreSQL
+  },
   mapEndpoint: "http://localhost:5500/api/map/transform",
   parseEndpoint: "http://localhost:5500/api/parse",
   getMapEndpoint: "http://localhost:5500/api/map",
