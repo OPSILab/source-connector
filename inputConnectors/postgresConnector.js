@@ -1,9 +1,24 @@
 process.postgreInit = "busy"
 const { Client } = require('pg');
 const config = require('../config')
-const { postgreConfig } = config
+const { postgreConfig, postgreReaderConfig } = config
 const logger = require('percocologger')
 const client = new Client(postgreConfig)
+let readerClient
+
+function connectReader() {
+    readerClient = new Client(postgreReaderConfig)
+
+    readerClient.connect((err) => {
+        if (err) {
+            logger.error('PostgreSQL reader connection error:', err)
+            process.postgreInit = "done"
+            return
+        }
+
+        createSourcesTable()
+    })
+}
 
 function checkUserExists() {
     client.query(
@@ -18,18 +33,33 @@ function checkUserExists() {
 
             if (result.rows.length > 0) {
                 logger.info('User already exists')
-                createSourcesTable()
+                setUserPrivileges()
             } else {
-                setUser()
+                createUser()
             }
         }
     )
 }
 
-function setUser() {
+function createUser() {
+    client.query(
+        `CREATE USER readerUser WITH PASSWORD '${postgreReaderConfig.password}'`,
+        (err) => {
+            if (err) {
+                logger.error('Error creating reader user:', err)
+                process.postgreInit = "done"
+                return
+            }
+
+            logger.info('Reader user created')
+            setUserPrivileges()
+        }
+    )
+}
+
+function setUserPrivileges() {
     const queries = [
-        `CREATE USER readerUser WITH PASSWORD '${postgreConfig.password}'`,
-        `GRANT CONNECT ON DATABASE ${postgreConfig.database} TO readerUser`,
+        `GRANT CONNECT ON DATABASE ${postgreReaderConfig.database} TO readerUser`,
         `GRANT USAGE ON SCHEMA public TO readerUser`,
         `GRANT SELECT ON ALL TABLES IN SCHEMA public TO readerUser`,
         `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readerUser`
@@ -39,14 +69,14 @@ function setUser() {
 
     function next() {
         if (index === queries.length) {
-            logger.info('All user queries executed')
-            createSourcesTable()
+            logger.info('All reader privileges configured')
+            connectReader()
             return
         }
 
         client.query(queries[index++], (err) => {
             if (err) {
-                logger.error('Error executing query:', err)
+                logger.error('Error executing privilege query:', err)
                 process.postgreInit = "done"
                 return
             }
@@ -107,4 +137,4 @@ client.connect((err) => {
     checkUserExists()
 })
 
-module.exports = client
+module.exports = { client, getReaderClient: () => readerClient }
