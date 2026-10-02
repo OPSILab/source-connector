@@ -23,21 +23,38 @@ module.exports = {
     password: '',
     port: 5432
   },
+  postgreReaderConfig: {
+    user: '',
+    host: 'localhost',
+    database: '',
+    password: '',
+    port: 5432, // Porta di default per PostgreSQL
+  },
   mapEndpoint: "http://localhost:5500/api/map/transform",
+  parseEndpoint: "http://localhost:5500/api/parse",
+  getMapEndpoint: "http://localhost:5500/api/map",
   sessionEndpoint: "http://localhost:5500/api/output?",
   mapID: "",
   orion: {
+    protocol: "http",
     subscribe: true,
     deleteAllDuplicateSubscriptions: true,
     attrWithUrl: "datasetUrl",
-    orionBaseUrl: "http://localhost:1027",
+    orionBaseUrl: "http://localhost:1026",
+    hostname: "localhost",
+    port: 1026,
+    ngsiBrokerUrl: "https://dx-lab.it/",
     notificationUrl: "http://localhost:3000/api/orion/subscribe",
     fiwareService: "",
-    fiwareServicePath: ""
+    fiwareServicePath: "",
+    checkSubscriptionInterval: 0,
+    recreateSubscriptionAtInterval: 0,
+    useNgsiBroker: false
   },
   logLevel: "info",
   syncInterval: 86400000,
   doNotSyncAtStart: false,
+  upsertRecords: true,
   delays: 1,
   queryAllowedExtensions: ["csv", "json", "geojson"],
   parseCompatibilityMode: 0,
@@ -60,6 +77,7 @@ module.exports = {
   },
   sourceConnectors: {
     minioConnector: true,
+    orionConnector: true,
     apiConnector: true
   },
   queryOptions: {
@@ -67,5 +85,60 @@ module.exports = {
     advancedSearch: true,
     SQLQuery: true,
     graphQLQuery: true
+  },
+  apiConnectorConfig: {
+    upsertRecords: false,
+    pollInterval: 1000 * 60 * 60 * 24/*,
+    apiUrls: [
+      {
+        name: "Example API",
+        url: "https://example.com/api/data",
+        headers: {
+          "Authorization": {
+            type: "bearerToken",
+            authProfile: "basic",
+            credentials: {
+              username: "username",
+              password: "password"
+            },
+            authUrl: {
+              value: "https://example.com/api/token",
+              requestType: "POST"
+            }
+          },
+          "Authorization": {
+            type: "bearerToken",
+            authProfile: "OAuth 2.0 Client Credentials Grant",
+            credentials: {
+              client_id: "username",
+              client_secret: "password"
+            },
+            authUrl: {
+              value: "https://example.com/api/token",
+              requestType: "POST"
+            }
+          }
+        }
+      },            
+      {
+                name: "Orion pagination test",
+                pagination: {
+                    offsetParam: "offset",
+                    limitParam: "limit",
+                    limit: 2,
+                    offset: 0,
+                    condition: (response) => (response.data.length > 0)
+                },
+                url: "http://localhost:1026/ngsi-ld/v1/entities?type=DistributionDCAT-AP",
+      },
+      {
+                name: "Get batch example",
+                batch: {
+                    from: "http://url-to-get-batch.com/api/batch",
+                    param: "id"
+                },
+                url: "https://url-to-use-batch/{batch}"
+            }
+    ]*/
   }
 }

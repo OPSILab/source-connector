@@ -1,3 +1,4 @@
+process.percocologger = require("./percocologger.config");
 const common = require("./utils/common")
 const config = common.checkConfig(require('./config'), require('./config.template'))
 const mongoose = require("mongoose");
@@ -15,6 +16,16 @@ mongoose.connect(config.mongo, { useNewUrlParser: true, useUnifiedTopology: true
     app.use(express.urlencoded({ extended: false }));
     app.use(bodyParser.json());
     app.use(config.basePath || "/api", routes);
-    app.listen(port, () => { logger.info(`Source connector server listens on http://localhost:${port}`); });
+    app.listen(port, () => {
+        logger.info(`Source connector server listens on http://localhost:${port}`);
+        if (config.orion.checkSubscriptionInterval)
+            setInterval(common.verifyLostSubscriptionOrion, config.orion.checkSubscriptionInterval)
+        if (config.orion.subscribe)
+            common.verifyLostSubscriptionOrion().then(() => {
+                logger.info("lost subscription verified")
+            })
+        if (config.sourceConnectors.apiConnector)
+            require("./inputConnectors/apiConnector")
+    });
     logger.info(`Node.js version: ${process.version}`);
 })

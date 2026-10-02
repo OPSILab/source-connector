@@ -1,5 +1,8 @@
 ﻿const logger = require('percocologger')
 const log = logger.info
+const axios = require("axios")
+const config = require("../config")
+const Entity = require("../api/models/Entity")
 
 function objectCheck(objs) {
   for (let obj of objs)
@@ -40,7 +43,7 @@ function convertCSVtoJSON(csvData) {
       obj[this.deleteSpaces(headers[j].replaceAll(/['"]/g, ''))] = this.deleteSpaces(currentLine[j]?.replaceAll(/['"]/g, ''));
     results.push(obj);
   }
- 
+
   return JSON.stringify(results);
 }
 
@@ -62,7 +65,127 @@ function syncEntries(obj, visibility, entries) {
       entries[key][stringify(obj[key])].push(visibility)
 }
 
+async function getFromOrion() {
+  let collectedEntities = []
+  let orionUrl = config.orion.orionBaseUrl + "/ngsi-ld/v1/entities?type=" + config.orion.subscribeType + "&limit=1000&count=true"
+  let entities = await axios.get(orionUrl)
+  collectedEntities = collectedEntities.concat(entities.data)
+  let totalEntities = entities.headers["NGSILD-Results-Count"]
+  while (collectedEntities.length < totalEntities)
+    collectedEntities = collectedEntities.concat((await axios.get(orionUrl + "&offset=" + collectedEntities.length)).data)
+  return collectedEntities
+}
+
+function fastAndPartialOrionizeEntity(ent, recursive) {
+  const { id, type } = ent
+  let orionedEnt = {}
+  if (id) orionedEnt.id = id
+  if (type) orionedEnt.type = type
+  let entCopy = JSON.parse(JSON.stringify(ent))
+  delete entCopy.id
+  delete entCopy.type
+  let isOrionEntity = true
+  if (!recursive)
+    for (let key in entCopy)
+      if (typeof entCopy[key] != "object" || (!entCopy[key].value && !entCopy[key].type)) {
+        isOrionEntity = false
+        break
+      }
+  if (recursive || !isOrionEntity)
+    for (let key in entCopy)
+      if (typeof entCopy[key] != "object" || Array.isArray(entCopy[key]))
+        entCopy[key] = { value: entCopy[key] }
+      else //if (!entCopy[key].value)
+        entCopy[key] = fastAndPartialOrionizeEntity(entCopy[key], true)
+  let parsedEnt = { ...orionedEnt, ...entCopy }
+  return parsedEnt
+}
+
+function checkField(ent, existingEntity, field) {
+  const check = (
+    !existingEntity
+    ||
+    (
+      existingEntity?.[field]?.value?.["@value"] &&
+      ent?.[field]?.value?.["@value"] &&
+      existingEntity[field].value["@value"] != ent[field].value["@value"]
+    )
+    ||
+    (
+      existingEntity?.[field]?.value && !existingEntity?.[field]?.value?.["@value"] &&
+      ent?.[field]?.value && !ent?.[field]?.value?.["@value"] &&
+      typeof existingEntity[field].value != "object" && typeof ent[field].value != "object" && 
+      !Array.isArray(existingEntity[field].value) && !Array.isArray(ent[field].value) &&
+      existingEntity[field].value != ent[field].value
+    )
+    ||
+    (
+      existingEntity?.[field]?.value && (typeof existingEntity[field].value == "object" || Array.isArray(existingEntity[field].value)) &&
+      ent?.[field]?.value && (typeof ent[field].value == "object" || Array.isArray(ent[field].value)) &&
+      JSON.stringify(existingEntity[field].value) != JSON.stringify(ent[field].value)
+    )
+    ||
+    !existingEntity?.[field]?.value && ent?.[field]?.value
+  )
+  logger.debug("check " + field + ": " + check)
+  return check
+}
+
+function checkMustUpdateDistributionDcatAp(ent, existingEntity) {
+  console.log(checkField(ent, existingEntity, "modifiedDate"))
+  console.log(checkField(ent, existingEntity, "byteSize"))
+  console.log(checkField(ent, existingEntity, "checksum"))
+  return (
+    checkField(ent, existingEntity, "modifiedDate") ||
+    checkField(ent, existingEntity, "byteSize") ||
+    checkField(ent, existingEntity, "checksum")
+  )
+}
+
 module.exports = {
+
+  checkMustUpdateDistributionDcatAp,
+
+  fastAndPartialOrionizeEntity,
+
+  async verifyLostSubscriptionOrion() {
+    try {
+      let entities
+      if (config.orion.useNgsiBroker)
+        entities = (await axios.get(config.orion.ngsiBrokerUrl)).data
+      else
+        entities = await getFromOrion()
+      logger.debug("Entities retrieved: " + JSON.stringify(entities).substring(0, 100))
+      for (let ent of entities) {
+        if (config.orion.useNgsiBroker)
+          ent = fastAndPartialOrionizeEntity(ent)
+        let existingEntity
+        ent.entityId = ent.id
+        existingEntity = await Entity.findOne({ entityId: ent.entityId })
+        if (existingEntity)
+          existingEntity = fastAndPartialOrionizeEntity(existingEntity)
+        logger.info(ent)
+        if (checkMustUpdateDistributionDcatAp(ent, existingEntity))
+          try {
+            await axios.post("http://localhost:" + (config.port || 3001) + "/api/orion/subscribe/6914a252ddb96948ee67b2e1", {
+              "id": "self",
+              "type": "Notification",
+              "subscriptionId": "self",
+              "notifiedAt": Date.now(),
+              "data": [
+                ent
+              ]
+            })
+          } catch (error) {
+            logger.error(error.response?.data ? { axios: error.response.data } : error)
+          }
+      }
+      logger.info("Lost subscription verified")
+    }
+    catch (error) {
+      logger.error(error.response?.data ? { axios: error.response.data } : error)
+    }
+  },
 
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -83,7 +206,7 @@ module.exports = {
   },
 
   async getEntries(obj, type, name, entries) {// csv, jsonArray, json
- 
+
     let visibility = getVisibility(name)
     if (!obj[0].csv && Array.isArray(obj[0].json) && type != "jsonArray")
       type = "jsonArray" //throw new Error("obj is a jsonArray and not " + type)
@@ -98,10 +221,10 @@ module.exports = {
       else {
         logger.trace(obj[0])
         syncEntries(obj[0], visibility, entries)
-       
+
         return
       }
-     
+
       logger.trace("so it was a geojson")
     }
     logger.trace("Here's obj before flatmap")
@@ -111,7 +234,7 @@ module.exports = {
       obj = obj.map(o => o.properties)
     for (let o of obj)
       syncEntries(o, visibility, entries)
-   
+
     return
   },
 
@@ -156,7 +279,7 @@ module.exports = {
     ]
     const headers = possibleHeaders[0].length > possibleHeaders[1].length ? possibleHeaders[0] : possibleHeaders[1]
     const results = [];
-    
+
     for (let i = 1; i < lines.length; i++) {
       const obj = {};
       const currentLine = lines[i].trim().split(possibleHeaders[0].length > possibleHeaders[1].length ? "," : ";");
@@ -164,7 +287,7 @@ module.exports = {
         obj[this.deleteSpaces(headers[j].replaceAll(/['"]/g, ''))] = this.deleteSpaces(currentLine[j]?.replaceAll(/['"]/g, ''));
       results.push(obj);
     }
-   
+
     return JSON.stringify(results);
   },
 
@@ -173,8 +296,9 @@ module.exports = {
   },
 
   checkConfig(configIn, configTemplate) {
+    //logger.info(configIn)
     for (let key in configTemplate) {
-      if (typeof configIn[key] == "object") 
+      if (typeof configIn[key] == "object")
         configIn[key] = this.checkConfig(configIn[key], configTemplate[key])
       else if (configIn[key] == undefined) {
         logger.warn(`Config key ${key} is missing, using default value`)
