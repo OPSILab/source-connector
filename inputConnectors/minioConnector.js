@@ -312,7 +312,8 @@ async function insertInDBs(newObject, record, align) {
     if (config.updateOwner == "later")
       owner = "unknown"
     else {
-      owner = (await axios.get(config.minioConfig.ownerInfoEndpoint + "/createdBy?filePath=" + queryName + "&etag=" + record.etag)).data
+      if (config.minioConfig.ownerInfoEndpoint)
+        owner = (await axios.get(config.minioConfig.ownerInfoEndpoint + "/createdBy?filePath=" + queryName + "&etag=" + record.etag)).data
     }
   }
   catch (error) {
