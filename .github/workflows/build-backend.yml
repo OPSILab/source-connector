@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main   
+      - master
       - build         
   pull_request:
     branches:
       - main
+      - master
       - build
 
 jobs:
