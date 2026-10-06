@@ -14,15 +14,17 @@ const log = logger.info
 process.queryEngine = { updatedOwners: {} }
 const client = require("./postgresConnector");
 const axios = require('axios')
+const { writeAccumulator, removeOrigin } = require('../utils/entriesStore')
 let syncing
-let entries_gl = {}
-let entities = {
-  values: [],
-  uniqueValues: [],
-  entries: [],
-  uniqueEntries: [],
-  keys: [],
-  uniqueKeys: []
+let touchedDuringSync = new Set() // origins (re)indexed while a sync is running, never swept by that sync
+
+// Origin used in keys/values/entries refs: unique across buckets, prefix used to tell minio origins from API urls
+function minioOrigin(record) {
+  return "minio://" + (record?.s3?.bucket?.name || record?.bucketName) + "/" + (record?.s3?.object?.key || record?.name)
+}
+
+function bucketOfOrigin(origin) {
+  return origin.slice("minio://".length).split("/")[0]
 }
 
 let forbiddenTables = new Set(['users', 'credentials'])
@@ -51,14 +53,19 @@ async function sync() {
         source: "minio"
       })
       await Source.deleteMany({ _id: { $in: refIds } }) //TODO divide collections by email and/or bucket
-      await Key.deleteMany({ _id: { $in: refIds } })
-      await Values.deleteMany({ _id: { $in: refIds } })
-      await Entries.deleteMany({ _id: { $in: refIds } })
+      // legacy keys/values/entries written before refs existed (Status-tracked or orphans): rebuilt below with refs
+      await Key.collection.deleteMany({ refs: { $exists: false } })
+      await Values.collection.deleteMany({ refs: { $exists: false } })
+      await Entries.collection.deleteMany({ refs: { $exists: false } })
+      touchedDuringSync.clear()
+      const seenOrigins = new Set()
+      const scannedBuckets = new Set()
       let objects = []
       let buckets = await listBuckets()
       let bucketIndex = 1
       for (let bucket of buckets) {
         let bucketObjects = await listObjects(bucket.name)
+        scannedBuckets.add(bucket.name)
         let index = 1
         for (let obj of bucketObjects) {
           try {
@@ -67,6 +74,7 @@ async function sync() {
             let extension = obj.name.split(".").pop()
             let isAllowed = (queryAllowedExtensions == "all" || queryAllowedExtensions.includes(extension))
             if (obj.size && obj.isLatest && isAllowed) {
+              seenOrigins.add(minioOrigin({ name: obj.name, bucketName: bucket.name }))
               let objectGot = await getObject(bucket.name, obj.name, obj.name.split(".").pop())
               objects.push({ raw: objectGot, info: { ...obj, bucketName: bucket.name } })
             }
@@ -79,86 +87,24 @@ async function sync() {
         logger.debug("Bucket ", bucketIndex++, " of ", buckets.length, " scanning done")
       }
 
-      entities.values = []
-      entities.keys = []
-      entities.entries = []
-      entities.uniqueValues = []
-      entities.uniqueKeys = []
-      entities.uniqueEntries = []
-
       for (let obj of objects)
         try {
-          await insertInDBs(obj.raw, obj.info, true)
+          await insertInDBs(obj.raw, obj.info, true) // each file: removeOrigin + write of its keys/values/entries
         }
         catch (error) {
           logger.error(error)
         }
 
-      let entries = Object.entries(entries_gl).map(([key, value]) => ({ [key]: value }));
-      let entriesInDB = []
-      for (let key in entries_gl)
-        for (let value in entries_gl[key])
-          entriesInDB.push({
-            key,
-            value,
-            visibility: entries_gl[key][value]
-          })
-      try {
-        if (entriesInDB.length > 0) await updateCollectionAndStatus(Entries, entriesInDB);//Entries.insertMany(entriesInDB);
-      } catch (error) {
-        if (!error?.errorResponse?.message?.includes("Document can't have")) {
-          log(error);
-        } else {
+      // sweep: files no longer in a scanned bucket (e.g. deleted while the service was down)
+      const indexedOrigins = await Key.collection.distinct("refs.origin", { "refs.origin": /^minio:\/\// })
+      for (const origin of indexedOrigins)
+        if (origin.startsWith("minio://") && scannedBuckets.has(bucketOfOrigin(origin)) && !seenOrigins.has(origin) && !touchedDuringSync.has(origin))
           try {
-            entries = entries.map(entry => {
-              let fixedEntry = {};
-
-              for (let key in entry) {
-                let nestedObject = entry[key];
-
-                if (typeof nestedObject === 'object' && nestedObject !== null) {
-                  let sanitizedNestedObject = {};
-                  for (let nestedKey in nestedObject) {
-                    let sanitizedNestedKey = nestedKey.replace(/\$/g, ''); // Rimuove i `$` dalle chiavi
-                    sanitizedNestedObject[sanitizedNestedKey] = nestedObject[nestedKey]; // Mantiene gli array di valori
-                  }
-                  fixedEntry[key] = sanitizedNestedObject;
-                } else {
-                  fixedEntry[key] = nestedObject;
-                }
-              }
-
-              return fixedEntry;
-            });
-
-            await updateCollectionAndStatus(Entries, entries); //await Entries.insertMany(entries);
-          } catch (error) {
-            log("There are problems inserting objects in MongoDB");
-            log(error);
+            await removeOrigin(origin)
           }
-        }
-      }
-
-      let valuesToDB = []
-
-      for (let entry of entries)
-        for (let key in entry)
-          for (let subKeyAliasValue in entry[key]) {
-            let existingEntry = valuesToDB.find(v => v.value === subKeyAliasValue)
-            if (existingEntry)
-              existingEntry.visibility = [...new Set([...existingEntry.visibility, ...entry[key][subKeyAliasValue]])]
-            else
-              valuesToDB.push({ value: subKeyAliasValue, visibility: entry[key][subKeyAliasValue] })
+          catch (error) {
+            logger.error(error)
           }
-
-      let keysToDB = entries.map(obj => ({
-        key: Object.keys(obj).pop() || "flag_error_key_missing",
-        visibility: obj[Object.keys(obj).pop()][Object.keys(obj[Object.keys(obj).pop()]).pop()],
-
-      })
-      )
-      await updateCollectionAndStatus(Key, keysToDB)
-      await updateCollectionAndStatus(Values, valuesToDB)
 
       syncing = false
       logger.info("Syncing finished")
@@ -171,6 +117,7 @@ async function sync() {
     }
   }
   catch (error) {
+    syncing = false // release the lock, otherwise every next sync returns "Syncing" forever
     logger.error(error)
   }
 }
@@ -500,7 +447,7 @@ async function insertInDBs(newObject, record, align) {
           { json: jsonParsed, record, name: record?.s3?.object?.key || record.name } :
           typeof jsonParsed == "object" ?
             { ...jsonParsed, record, name: record?.s3?.object?.key || record.name } :
-            { raw: jsonParsed, record, name: record?.s3?.object?.key || record.name }
+            { raw: jsonParsed !== undefined ? jsonParsed : newObject, record, name: record?.s3?.object?.key || record.name }
     ]
     try {
       await updateCollectionAndStatus(Source, insertingSource) //await Source.insertMany(insertingSource)
@@ -509,7 +456,7 @@ async function insertInDBs(newObject, record, align) {
       if (!error?.errorResponse?.message?.includes("Document can't have"))
         log(error)
       try {
-        updateCollectionAndStatus(Source, JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))//await Source.insertMany(JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))
+        await updateCollectionAndStatus(Source, JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))//await Source.insertMany(JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))
       }
       catch (error) {
         log("There are problems inserting object in mongo DB")
@@ -521,13 +468,19 @@ async function insertInDBs(newObject, record, align) {
     let type = await setType(extension, jsonParsed) // csv, jsonArray, json, raw
     logger.trace("type")
     logger.trace(type)
-    if (type != "raw")
-      try {
-        await getEntries(insertingSource, type, record?.s3?.object?.key || record.name, entries_gl)
-      }
-      catch (error) {
-        logger.error(error)
-      }
+    const origin = minioOrigin(record)
+    if (syncing)
+      touchedDuringSync.add(origin)
+    try {
+      const acc = {}
+      if (type != "raw")
+        await getEntries(insertingSource, type, record?.s3?.object?.key || record.name, acc)
+      await removeOrigin(origin)          // drops what the previous version of the file referenced
+      await writeAccumulator(acc, origin)
+    }
+    catch (error) {
+      logger.error(error)
+    }
   }
   while (!postgreFinished && config.queryOptions.SQLQuery) {
     await sleep(delays)
@@ -545,6 +498,12 @@ async function insertInDBs(newObject, record, align) {
 }
 
 async function deleteInDBs(record) {
+  try {
+    await removeOrigin(minioOrigin(record))
+  }
+  catch (error) {
+    logger.error(error)
+  }
   let postgreFinished, logCounterFlag
   let table = common.urlEncode(record?.s3?.bucket?.name || record.bucketName)
   if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table))
@@ -649,10 +608,6 @@ if (config.syncInterval)
 module.exports = {
 
   sync,
-
-  entities,
-
-  entries_gl,
 
   listObjects,
 

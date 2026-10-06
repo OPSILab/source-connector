@@ -49,8 +49,8 @@ function convertCSVtoJSON(csvData) {
 
 function getVisibility(name) {
 
-  name = name.split("/")
-  if (name[0].includes("@") || (name[0].toLowerCase().includes("shared data")))
+  name = name?.split("/")
+  if (name?.[0].includes("@") || (name?.[0].toLowerCase().includes("shared data")))
     return name[0]
   return "public-data"
 }

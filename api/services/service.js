@@ -9,6 +9,7 @@ const fs = require("fs");
 const { updateJWT } = require("../../utils/keycloak");
 let bearerToken;
 const Entity = require("../models/Entity")
+const { replaceRecords } = require("../../utils/sourceRecords")
 const { sleep, verifyLostSubscription, checkMustUpdateDistributionDcatAp, fastAndPartialOrionizeEntity } = require("../../utils/common")
 updateJWT()
   .then((token) => {
@@ -108,17 +109,12 @@ async function executeRequest(req, res) {
       if (response?.data?.data?.datapoints)
         await Datapoints.insertMany(response.data.data.datapoints);
       else
-        await minioWriter.insertInDBs(response.data, {
-          name: id + "-" + path.basename(new URL(downloadURL).pathname),
-          lastModified: new Date(),
-          versionId: "null",
-          isDeleteMarker: false,
-          bucketName: "orion-notify",
-          size: response.data.length,
-          isLatest: true,
-          etag: "",
-          insertedBy: "orion-notify",
+        // same ingestion as apiConnector (upsert by url): not tracked in Status, so minio sync never deletes it
+        await replaceRecords(response.data, downloadURL, {
+          logName: "orion-notify " + id,
+          sqlName: id + "-" + path.basename(new URL(downloadURL).pathname)
         });
+      correctlyInserted = true // reached only if the insertion above did not throw
     }
     else {
       let response
