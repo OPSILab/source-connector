@@ -4,8 +4,8 @@ const axios = require('axios')
 const Source = require("../api/models/Models").Source
 const { createCollector, removeOrigin } = require('../utils/entriesStore')
 const { waitForPostgreInit, pgQuery, makeItem, insertToPostgre, replaceRecords } = require('../utils/sourceRecords')
+const locks = require('../utils/jobLocks')
 let tokens = {}
-let polling = false
 
 function dbHasSameData(obj1, obj2) {
     //logger.info("Comparing objects:", JSON.stringify(obj1), JSON.stringify(obj2), JSON.stringify(obj1) == JSON.stringify(obj2))
@@ -31,11 +31,11 @@ function getValueFromParam(obj, param) {//item[api.batch.param]
 }
 
 async function pollAPI() {
-    if (polling) {
-        logger.info("Previous API poll still running, skipping this one")
+    if (locks.polling || locks.rebuilding) {
+        logger.info(locks.polling ? "Previous API poll still running, skipping this one" : "Rebuild from sources running, skipping this API poll")
         return
     }
-    polling = true
+    locks.polling = true
     try {
         const urls = config.apiConnectorConfig.apiUrls
         for (const api of urls) {
@@ -278,7 +278,7 @@ async function pollAPI() {
         logger.error("Error polling API:", error)
     }
     finally {
-        polling = false
+        locks.polling = false
     }
 }
 
