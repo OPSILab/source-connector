@@ -589,14 +589,23 @@ function getTypeRecursive(obj) {
         }
 }
 
-if (minioConfig.subscribe.all)
+// If MinIO isn't reachable at startup, the rejected promise used to be unhandled, which terminates the
+// process (Node >= 15). Now it's logged and retried, doubling the wait up to 10 minutes.
+function subscribeAllBuckets(retryDelay = 30000) {
   listBuckets().then((buckets) => {
     let a = 1
     for (let bucket of buckets) {
       getNotifications(bucket.name.toString())
       logger.debug("Subscribed bucket " + (a++) + " of " + buckets.length, "(", bucket.name, ")")
     }
+  }).catch((error) => {
+    logger.error(`MinIO not reachable, bucket notifications not subscribed yet: retrying in ${retryDelay / 1000}s`, error?.message || error)
+    setTimeout(() => subscribeAllBuckets(Math.min(retryDelay * 2, 600000)), retryDelay)
   })
+}
+
+if (minioConfig.subscribe.all)
+  subscribeAllBuckets()
 else
   for (let bucket of minioConfig.subscribe.buckets)
     getNotifications(bucket)
