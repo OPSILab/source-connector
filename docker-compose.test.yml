@@ -1,0 +1,35 @@
+# Throwaway databases for the tests (test/helpers/db.js), same images as production.
+#   npm run test:db        start them and wait until they are healthy
+#   npm test
+#   npm run test:db:down   stop and remove them (data lives in tmpfs, nothing is kept)
+# Also used by .github/workflows/tests-source-connector.yml.
+# Ports 27018 / 5433, not the default ones: they don't clash with a local MongoDB / PostgreSQL.
+name: source-connector-test
+
+services:
+  mongo:
+    image: mongo:4.4
+    ports:
+      - "27018:27017"
+    tmpfs:
+      - /data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      # over TCP: during its first initialisation the image runs a temporary server on the unix socket only
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
