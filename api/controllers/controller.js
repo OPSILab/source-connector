@@ -32,12 +32,15 @@ module.exports = {
         return await res.send({ queue: await service.queue() })
     },
 
-    // POST /rebuild?mode=entries|postgres|all&origin=<url>&keepLegacy=true (also accepted in the JSON body)
-    // Starts the rebuild in background and answers 202; progress/result via GET /rebuild.
+    // POST /rebuild?mode=entries|postgres|all&connector=api|orion&origin=<url>&keepLegacy=true (also accepted in the
+    // JSON body). mode is required: postgres / all copy the connector's collection into PostgreSQL, never by default.
+    // No connector: api and orion; origin requires a connector. Starts the rebuild in background and answers 202;
+    // progress/result via GET /rebuild.
     rebuild: async (req, res) => {
         const pick = name => req.query?.[name] ?? req.body?.[name]
         const params = {
-            mode: pick("mode") || "all",
+            mode: pick("mode") || undefined,
+            connector: pick("connector") || undefined,
             origin: pick("origin") || undefined,
             keepLegacy: pick("keepLegacy") === true || pick("keepLegacy") === "true"
         }

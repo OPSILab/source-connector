@@ -1,7 +1,13 @@
 // Keys / Values / Entries store with per-origin references.
 //
 // Document shape (Entries; Key has only `key`, Values only `value`):
-//   { key, value, visibility: ["public-data"], refs: [{ origin: "<url | file>", visibility: "public-data" }] }
+//   { key, value, visibility: ["public-data"], connectors: ["api"],
+//     refs: [{ origin: "<url | file>", visibility: "public-data", connector: "api" }] }
+// connector: api | orion | minio (utils/collections.js), so that the suggestions follow the collections searched;
+// `connectors` is the union of the refs' connectors (like `visibility`), recomputed when an origin is removed.
+// Refs written before connectors existed have none: the rebuild (utils/rebuild.js) replaces them.
+// Keys whose values are not indexed for some origins (datapointRules.valuesNotIndexed, e.g. the datapoints' `value`)
+// also have valuesNotIndexed: ["<origin>", ...]: the Query-Engine tells the user their values are not suggested.
 //
 // - Upsert + $addToSet: idempotent, a block can be written twice without side effects.
 // - Docs without `refs` (legacy, written before refs existed) are never matched nor modified;
@@ -14,11 +20,17 @@ const Key = require('../api/models/Key')
 const Values = require('../api/models/Value')
 const Entries = require('../api/models/Entries')
 const { getEntries } = require('./common')
+const { valuesNotIndexed } = require('./datapointRules')
+const { CONNECTORS } = require('./collections')
 
 const BULK_CHUNK_SIZE = 1000      // operations per bulkWrite
 const COLLECTOR_CHUNK_ITEMS = 500 // items accumulated in RAM before a flush
 
 const HAS_REFS = { "refs.origin": { $exists: true } }
+// `connectors` recomputed from the refs (left out when no ref has a connector: legacy docs)
+const CONNECTORS_OF_REFS = {
+  $cond: [{ $gt: [{ $size: { $setUnion: ["$refs.connector", []] } }, 0] }, { $setUnion: ["$refs.connector", []] }, "$$REMOVE"]
+}
 
 let indexesPromise
 function ensureIndexes() {
@@ -29,7 +41,11 @@ function ensureIndexes() {
       Key.collection.createIndex({ key: 1 }),
       Key.collection.createIndex({ "refs.origin": 1 }),
       Values.collection.createIndex({ value: 1 }),
-      Values.collection.createIndex({ "refs.origin": 1 })
+      Values.collection.createIndex({ "refs.origin": 1 }),
+      // suggestions of some collections only
+      Entries.collection.createIndex({ connectors: 1, key: 1, value: 1 }),
+      Key.collection.createIndex({ connectors: 1, key: 1 }),
+      Values.collection.createIndex({ connectors: 1, value: 1 })
     ]).catch(error => {
       indexesPromise = undefined // retry at next call
       logger.error("Error creating indexes for keys/values/entries", error)
@@ -37,15 +53,21 @@ function ensureIndexes() {
   return indexesPromise
 }
 
-function upsertOp(match, visibility, origin) {
+function ref(origin, visibility, connector) {
+  // field order must stay the same (origin, visibility, connector): $addToSet compares whole objects
+  return connector === undefined ? { origin, visibility } : { origin, visibility, connector }
+}
+
+function upsertOp(match, visibility, origin, connector, extra = {}) {
   return {
     updateOne: {
       filter: { ...match, ...HAS_REFS },
       update: {
         $addToSet: {
           visibility: { $each: visibility },
-          // field order must stay the same (origin, visibility): $addToSet compares whole objects
-          refs: { $each: visibility.map(v => ({ origin, visibility: v })) }
+          refs: { $each: visibility.map(v => ref(origin, v, connector)) },
+          ...(connector === undefined ? {} : { connectors: connector }),
+          ...extra
         }
       },
       upsert: true
@@ -66,7 +88,11 @@ async function bulkInChunks(Model, ops) {
 }
 
 // acc = { [key]: { [stringifiedValue]: [visibility, ...] } }  (same shape produced by common.getEntries)
-async function writeAccumulator(acc, origin) {
+// keysOnly = { [key]: [visibility, ...] }: keys whose values are not indexed (no values / entries for them)
+// connector: api | orion | minio (undefined only in old callers / tests: refs without connector)
+async function writeAccumulator(acc, origin, keysOnly = {}, connector) {
+  if (connector !== undefined && !CONNECTORS.includes(connector))
+    throw new Error(`Unknown connector "${connector}"`)
   await ensureIndexes()
   const entryOps = []
   const keyOps = []
@@ -76,7 +102,7 @@ async function writeAccumulator(acc, origin) {
     const keyVisibility = new Set()
     for (const value in acc[key]) {
       const visibility = acc[key][value]
-      entryOps.push(upsertOp({ key, value }, visibility, origin))
+      entryOps.push(upsertOp({ key, value }, visibility, origin, connector))
       let valueVisibility = valuesVisibility.get(value)
       if (!valueVisibility)
         valuesVisibility.set(value, valueVisibility = new Set())
@@ -85,9 +111,11 @@ async function writeAccumulator(acc, origin) {
         valueVisibility.add(v)      // union over all keys holding the value
       }
     }
-    keyOps.push(upsertOp({ key }, [...keyVisibility], origin))
+    keyOps.push(upsertOp({ key }, [...keyVisibility], origin, connector))
   }
-  const valueOps = [...valuesVisibility].map(([value, visibility]) => upsertOp({ value }, [...visibility], origin))
+  for (const key in keysOnly)
+    keyOps.push(upsertOp({ key }, keysOnly[key], origin, connector, { valuesNotIndexed: origin }))
+  const valueOps = [...valuesVisibility].map(([value, visibility]) => upsertOp({ value }, [...visibility], origin, connector))
 
   await bulkInChunks(Entries, entryOps)
   await bulkInChunks(Key, keyOps)
@@ -108,7 +136,14 @@ async function removeOrigin(origin) {
     // 2. docs shared with other origins -> drop this origin and recompute visibility
     const updated = await Model.collection.updateMany({ "refs.origin": origin }, [
       { $set: { refs: { $filter: { input: "$refs", cond: { $ne: ["$$this.origin", origin] } } } } },
-      { $set: { visibility: { $setUnion: ["$refs.visibility", []] } } }
+      { $set: { visibility: { $setUnion: ["$refs.visibility", []] }, connectors: CONNECTORS_OF_REFS } },
+      ...(Model === Key ? [{
+        $set: {
+          valuesNotIndexed: {
+            $cond: [{ $isArray: "$valuesNotIndexed" }, { $filter: { input: "$valuesNotIndexed", cond: { $ne: ["$$this", origin] } } }, "$$REMOVE"]
+          }
+        }
+      }] : [])
     ])
     logger.debug(`${Model.modelName}: removed origin ${origin} (${deleted.deletedCount} deleted, ${updated.modifiedCount} updated)`)
   }
@@ -116,13 +151,21 @@ async function removeOrigin(origin) {
 
 // One collector per origin: add() only computes entries in RAM, the DB is written every
 // COLLECTOR_CHUNK_ITEMS items and on the final flush().
-function createCollector(origin) {
+function createCollector(origin, connector) {
   let acc = {}
+  let keysOnly = {}
   let pending = 0
   return {
     async add(items) {
       for (const item of items) {
         const { _id, ...data } = item // _id is a mongo id, not a data field
+        if (connector == "orion")
+          delete data.dupl_hash // the Datapoint dedup key (the whole document as JSON): one value per datapoint
+        // fields whose values are not indexed: only their key (same visibility as getEntries without a name)
+        for (const field of valuesNotIndexed(data, connector)) {
+          delete data[field]
+          keysOnly[field] = ["public-data"]
+        }
         await getEntries([data], "json", undefined, acc) // name undefined -> "public-data"
         if (++pending >= COLLECTOR_CHUNK_ITEMS)
           await this.flush()
@@ -132,15 +175,49 @@ function createCollector(origin) {
       if (!pending)
         return
       const snapshot = acc
+      const snapshotKeys = keysOnly
       acc = {}
+      keysOnly = {}
       pending = 0
-      await writeAccumulator(snapshot, origin)
+      await writeAccumulator(snapshot, origin, snapshotKeys, connector)
     }
+  }
+}
+
+// Refs written before connectors existed (no `connector`) or by a connector given in `connectors`: dropped, and
+// the documents left without refs deleted. Used by the rebuild before writing those connectors' refs again.
+async function removeRefs({ withoutConnector = false, connectors = [] } = {}) {
+  await ensureIndexes()
+  const conditions = []
+  if (withoutConnector)
+    conditions.push({ $not: [{ $ifNull: ["$$this.connector", false] }] })
+  if (connectors.length)
+    conditions.push({ $in: ["$$this.connector", connectors] })
+  if (!conditions.length)
+    return
+  const doomed = { $or: conditions }
+  const match = { $or: [...(withoutConnector ? [{ refs: { $elemMatch: { connector: { $exists: false } } } }] : []), ...(connectors.length ? [{ "refs.connector": { $in: connectors } }] : [])] }
+  for (const Model of [Entries, Key, Values]) {
+    const updated = await Model.collection.updateMany({ ...HAS_REFS, ...match }, [
+      { $set: { refs: { $filter: { input: "$refs", cond: { $not: [doomed] } } } } },
+      { $set: { visibility: { $setUnion: ["$refs.visibility", []] }, connectors: CONNECTORS_OF_REFS } },
+      ...(Model === Key ? [{
+        $set: {
+          // origins of removed refs: valuesNotIndexed keeps only those still referenced
+          valuesNotIndexed: {
+            $cond: [{ $isArray: "$valuesNotIndexed" }, { $filter: { input: "$valuesNotIndexed", cond: { $in: ["$$this", "$refs.origin"] } } }, "$$REMOVE"]
+          }
+        }
+      }] : [])
+    ])
+    const deleted = await Model.collection.deleteMany({ refs: { $size: 0 } }) // no `refs` at all: legacy docs, untouched
+    logger.info(`${Model.modelName}: refs removed from ${updated.modifiedCount} docs, ${deleted.deletedCount} docs left without refs deleted`)
   }
 }
 
 module.exports = {
   createCollector,
+  removeRefs,
   removeOrigin,
   writeAccumulator,
   ensureIndexes

@@ -89,4 +89,5 @@ datapointSchema.statics.upsertMany = async function (datapoints) {
   return this.bulkWrite(operations, { ordered: false });
 };
 
-module.exports = mongoose.model("Datapoint", datapointSchema);
+// The model is created by api/models/Models.js on the collection of collections.orion.mongo ("datapoints")
+module.exports = { datapointSchema, generateHash, cleanSurveyName };

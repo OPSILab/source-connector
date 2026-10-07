@@ -3,11 +3,14 @@ const common = require('../utils/common.js')
 const { sleep, getEntries, setType } = common
 const config = require('../config.js')
 const { minioConfig, delays, queryAllowedExtensions } = config
-const Source = require('../api/models/Models.js').Source//TODO divide collections by email and/or bucket
 const Key = require('../api/models/Key')
 const Values = require('../api/models/Value')
 const Entries = require('../api/models/Entries')
-const Status = require('../api/models/Status')
+// MinIO files have their own collection (collections.minio.mongo, "minio"): everything in it comes from MinIO, so the
+// sync empties it and the Status collection is no longer needed to tell MinIO documents from the others.
+const { collectionSettings, collectionModel } = require('../utils/collections')
+const Source = () => collectionModel("minio")
+const minioSettings = () => collectionSettings("minio")
 const minioClient = new Minio.Client(minioConfig)
 const logger = require('percocologger')
 const log = logger.info
@@ -29,19 +32,11 @@ function bucketOfOrigin(origin) {
 
 let forbiddenTables = new Set(['users', 'credentials'])
 
-async function updateCollectionAndStatus(Collection, insertingSource) {
-  const sourceInserted = await Collection.insertMany(insertingSource)
-  console.log(sourceInserted.map(source => ({
-    refId: source._id,
-    source: "minio"
-  })))
-  //await sleep(10000)
-
-  await Status.insertMany(
-    sourceInserted.map(source => ({
-      refId: source._id,
-      source: "minio"
-    })))
+// The documents of one file (same object name in the same bucket)
+function fileFilter(record) {
+  const bucket = record?.s3?.bucket?.name || record?.bucketName
+  const name = record?.s3?.object?.key || record?.name
+  return { name, $or: [{ "record.bucketName": bucket }, { "record.s3.bucket.name": bucket }] }
 }
 
 async function sync() {
@@ -49,11 +44,9 @@ async function sync() {
   try {
     if (!syncing) {
       syncing = true
-      const refIds = await Status.distinct("refId", {
-        source: "minio"
-      })
-      await Source.deleteMany({ _id: { $in: refIds } }) //TODO divide collections by email and/or bucket
-      // legacy keys/values/entries written before refs existed (Status-tracked or orphans): rebuilt below with refs
+      if (minioSettings().toMongo)
+        await Source().deleteMany({}) // rebuilt below from the files
+      // legacy keys/values/entries written before refs existed (orphans): rebuilt below with refs
       await Key.collection.deleteMany({ refs: { $exists: false } })
       await Values.collection.deleteMany({ refs: { $exists: false } })
       await Entries.collection.deleteMany({ refs: { $exists: false } })
@@ -274,12 +267,10 @@ async function getObject(bucketName, objectName, format) {
     return resultMessage
 }
 
+// MinIO files go to MongoDB and / or PostgreSQL: collections.minio.toMongo / toPostgres
 function checkQueryOptions() {
-  return config.queryOptions.advancedSearch || config.queryOptions.SQLQuery
-  for (let option in config.queryOptions)
-    if (option != "simpleSearch" && config.queryOptions[option] === true)
-      return true
-  return false
+  const settings = minioSettings()
+  return settings.toMongo || settings.toPostgres
 }
 
 async function insertInDBs(newObject, record, align) {
@@ -323,7 +314,8 @@ async function insertInDBs(newObject, record, align) {
   log("Owner ", owner)
   record = { ...record, insertedBy: owner }
 
-  if (config.queryOptions.SQLQuery) {
+  const settings = minioSettings()
+  if (settings.toPostgres) {
     let table = common.urlEncode(record?.s3?.bucket?.name || record.bucketName)
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table))
       throw new Error('Invalid table name');
@@ -411,7 +403,7 @@ async function insertInDBs(newObject, record, align) {
     });
   }
 
-  if (config.queryOptions.advancedSearch) {
+  if (settings.toMongo) {
 
     if ((!jsonParsed) || (jsonParsed && typeof jsonParsed != "object"))
       try {
@@ -423,10 +415,7 @@ async function insertInDBs(newObject, record, align) {
 
     try {// TODO better doing an update...
       log("Delete ", (record?.s3?.object?.key || record.name))
-      const refIds = await Status.distinct("refId", {
-        source: "minio"
-      })
-      await Source.deleteMany({ 'name': (record?.s3?.object?.key || record.name), _id: { $in: refIds } })//record.s3.object
+      await Source().deleteMany(fileFilter(record)) // the previous version of the file
     }
     catch (error) {
       log(error)
@@ -451,13 +440,13 @@ async function insertInDBs(newObject, record, align) {
             { raw: jsonParsed !== undefined ? jsonParsed : newObject, record, name: record?.s3?.object?.key || record.name }
     ]
     try {
-      await updateCollectionAndStatus(Source, insertingSource) //await Source.insertMany(insertingSource)
+      await Source().insertMany(insertingSource)
     }
     catch (error) {
       if (!error?.errorResponse?.message?.includes("Document can't have"))
         log(error)
       try {
-        await updateCollectionAndStatus(Source, JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))//await Source.insertMany(JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))
+        await Source().insertMany(JSON.parse(JSON.stringify(insertingSource).replace(/\$/g, '')))
       }
       catch (error) {
         log("There are problems inserting object in mongo DB")
@@ -477,13 +466,13 @@ async function insertInDBs(newObject, record, align) {
       if (type != "raw")
         await getEntries(insertingSource, type, record?.s3?.object?.key || record.name, acc)
       await removeOrigin(origin)          // drops what the previous version of the file referenced
-      await writeAccumulator(acc, origin)
+      await writeAccumulator(acc, origin, {}, "minio")
     }
     catch (error) {
       logger.error(error)
     }
   }
-  while (!postgreFinished && config.queryOptions.SQLQuery) {
+  while (!postgreFinished && settings.toPostgres) {
     await sleep(delays)
     if (!logCounterFlag) {
       logCounterFlag = true
@@ -494,7 +483,7 @@ async function insertInDBs(newObject, record, align) {
       })
     }
   }
-  if (postgreFinished || !config.queryOptions.SQLQuery)
+  if (postgreFinished || !settings.toPostgres)
     return postgreFinished || true
 }
 
@@ -505,7 +494,8 @@ async function deleteInDBs(record) {
   catch (error) {
     logger.error(error)
   }
-  let postgreFinished, logCounterFlag
+  const settings = minioSettings()
+  let postgreFinished = !settings.toPostgres, logCounterFlag
   let table = common.urlEncode(record?.s3?.bucket?.name || record.bucketName)
   if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table))
     throw new Error('Invalid table name');
@@ -517,6 +507,7 @@ async function deleteInDBs(record) {
     table = "status_table"
   else if (table == "sources")
     table = "sources_table"
+  if (settings.toPostgres)
   client.query(`DELETE FROM ${table} WHERE name = $1`, [record?.s3?.object?.key || record.name], (err, res) => {
     if (err) {
       log("ERROR deleting object in DB");
@@ -542,11 +533,9 @@ async function deleteInDBs(record) {
   }
 
   try {
-    const refIds = await Status.distinct("refId", {
-      source: "minio"
-    })
     log("Delete ", record?.s3?.object?.key || record.name)
-    await Source.deleteMany({ 'name': (record?.s3?.object?.key || record.name), _id: { $in: refIds } })//record.s3.object
+    if (settings.toMongo)
+      await Source().deleteMany(fileFilter(record))
   }
   catch (error) {
     log(error)

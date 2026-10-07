@@ -11,7 +11,9 @@ const path = require("path")
 
 const MONGO_URL = process.env.MONGO_TEST_URL || "mongodb://127.0.0.1:27018"
 const PG_URL = process.env.PG_TEST_URL || "postgres://postgres:postgres@127.0.0.1:5433/postgres"
-const COLLECTIONS = ["keys", "values", "entries", "sources"]
+// the collections of the connectors (config.template.js collections) and of keys / values / entries
+const COLLECTIONS = ["keys", "values", "entries", "sources", "datapoints", "minio", "status"]
+const PG_TABLES = ["sources", "datapoints"]
 
 let mongoose, sharedPg, dbName
 
@@ -75,14 +77,15 @@ async function setup(testFile) {
         await new Promise(resolve => setTimeout(resolve, 50))
     }
     await query("SELECT 1 FROM sources LIMIT 1") // fails here if the connection or the table creation failed
+    await query("CREATE TABLE IF NOT EXISTS datapoints (id SERIAL PRIMARY KEY, name TEXT, data JSONB, record JSONB)")
 }
 
-// Empties the collections (indexes are kept) and the PostgreSQL sources table, restores the config.
+// Empties the collections (indexes are kept) and the PostgreSQL tables, restores the config.
 async function clean() {
     env.resetConfig()
     for (const name of COLLECTIONS)
         await mongoose.connection.db.collection(name).deleteMany({})
-    await query("TRUNCATE sources RESTART IDENTITY")
+    await query(`TRUNCATE ${PG_TABLES.join(", ")} RESTART IDENTITY`)
 }
 
 async function teardown() {

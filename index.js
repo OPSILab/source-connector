@@ -1,6 +1,7 @@
 process.percocologger = require("./percocologger.config");
 const common = require("./utils/common")
 const config = common.checkConfig(require('./config'), require('./config.template'))
+require('./utils/collections').validateCollections() // two connectors on the same collection / table: stop here
 const mongoose = require("mongoose");
 mongoose.connect(config.mongo, { useNewUrlParser: true, useUnifiedTopology: true }).then(() => {
     const express = require('express');

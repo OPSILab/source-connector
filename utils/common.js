@@ -55,14 +55,47 @@ function getVisibility(name) {
   return "public-data"
 }
 
+// How deep nested objects are turned into dotted keys (deeper parts stay JSON values)
+const FLATTEN_DEPTH = 4
+const isScalar = value => value === null || ["string", "number", "boolean"].includes(typeof value)
+const isPlainObject = value => value !== null && typeof value === "object" && !Array.isArray(value)
+// field names usable in a MongoDB dotted path
+const dottable = obj => Object.keys(obj).every(k => k && !k.includes(".") && !k.startsWith("$"))
+
+// The (key, value) pairs a field is indexed with, in the shape MongoDB queries match:
+//  - scalar                -> itself
+//  - array of scalars      -> one pair per element: { dimensions: "Lovech" } matches ["Lovech", "Euro", ...],
+//                             and every distinct element is stored once instead of every distinct array
+//  - object                -> its fields under dotted keys ("title.value"), up to FLATTEN_DEPTH levels
+//  - array of objects      -> the fields of every element under dotted keys ("items.name")
+//  - anything else (arrays of arrays, mixed arrays, deeper objects, odd field names) -> the JSON, as before
+function entryPairs(key, value, depth = 0, pairs = []) {
+  if (Array.isArray(value) && value.length && value.every(isScalar))
+    value.forEach(item => pairs.push([key, item]))
+  else if (depth < FLATTEN_DEPTH && isPlainObject(value) && Object.keys(value).length && dottable(value))
+    for (const k in value)
+      entryPairs(key + "." + k, value[k], depth + 1, pairs)
+  else if (depth < FLATTEN_DEPTH && Array.isArray(value) && value.length && value.every(item => isPlainObject(item) && dottable(item)))
+    value.forEach(item => { for (const k in item) entryPairs(key + "." + k, item[k], depth + 1, pairs) })
+  else
+    pairs.push([key, value])
+  return pairs
+}
+
 function syncEntries(obj, visibility, entries) {
-  for (let key in obj)
-    if (!entries[key])
-      entries[key] = { [stringify(obj[key])]: [visibility] }
-    else if (!entries[key][stringify(obj[key])])
-      entries[key][stringify(obj[key])] = [visibility]
-    else if (!entries[key][stringify(obj[key])].includes(visibility))
-      entries[key][stringify(obj[key])].push(visibility)
+  for (let field in obj)
+    for (const [key, raw] of entryPairs(field, obj[field])) {
+      if (raw === undefined)
+        continue // not a value (JSON has no undefined): it used to be indexed as "undefined"
+
+      const value = stringify(raw)
+      if (!entries[key])
+        entries[key] = { [value]: [visibility] }
+      else if (!entries[key][value])
+        entries[key][value] = [visibility]
+      else if (!entries[key][value].includes(visibility))
+        entries[key][value].push(visibility)
+    }
 }
 
 async function getFromOrion() {
@@ -143,6 +176,8 @@ function checkMustUpdateDistributionDcatAp(ent, existingEntity) {
 }
 
 module.exports = {
+
+  entryPairs,
 
   checkMustUpdateDistributionDcatAp,
 

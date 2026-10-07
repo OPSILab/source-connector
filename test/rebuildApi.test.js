@@ -43,20 +43,33 @@ const post = (path, { body, token } = {}) => fetch(baseUrl + path, {
 })
 
 describe("POST /rebuild", () => {
-    test("202 and starts the rebuild in background (defaults: mode all)", async () => {
+    test("400 without a mode: never \"all\" by default", async () => {
         const res = await post("/rebuild")
+        assert.equal(res.status, 400)
+        assert.match(await res.text(), /mode is required/)
+        assert.equal(runCalls.length, 0)
+    })
+
+    test("202 and starts the rebuild in background", async () => {
+        const res = await post("/rebuild?mode=all")
         assert.equal(res.status, 202)
         assert.deepEqual(await res.json(), { started: true, mode: "all", keepLegacy: false })
-        assert.deepEqual(runCalls, [{ mode: "all", origin: undefined, keepLegacy: false }])
+        assert.deepEqual(runCalls, [{ mode: "all", connector: undefined, origin: undefined, keepLegacy: false }])
     })
 
     test("parameters from the query string or from the body", async () => {
-        await post("/rebuild?mode=entries&origin=" + encodeURIComponent("https://api/a?x=1") + "&keepLegacy=true")
-        await post("/rebuild", { body: { mode: "postgres", origin: "https://api/b", keepLegacy: true } })
+        await post("/rebuild?mode=entries&connector=api&origin=" + encodeURIComponent("https://api/a?x=1") + "&keepLegacy=true")
+        await post("/rebuild", { body: { mode: "postgres", connector: "orion", origin: "https://api/b", keepLegacy: true } })
         assert.deepEqual(runCalls, [
-            { mode: "entries", origin: "https://api/a?x=1", keepLegacy: true },
-            { mode: "postgres", origin: "https://api/b", keepLegacy: true }
+            { mode: "entries", connector: "api", origin: "https://api/a?x=1", keepLegacy: true },
+            { mode: "postgres", connector: "orion", origin: "https://api/b", keepLegacy: true }
         ])
+    })
+
+    test("400 on an unknown connector, or an origin without connector", async () => {
+        assert.equal((await post("/rebuild?mode=entries&connector=nope")).status, 400)
+        assert.equal((await post("/rebuild?mode=entries&origin=https://api/a")).status, 400)
+        assert.equal(runCalls.length, 0)
     })
 
     test("400 on an unknown mode", async () => {
@@ -68,10 +81,10 @@ describe("POST /rebuild", () => {
 
     test("409 while a rebuild or a poll is running", async () => {
         locks.rebuilding = true
-        assert.equal((await post("/rebuild")).status, 409)
+        assert.equal((await post("/rebuild?mode=entries")).status, 409)
         locks.rebuilding = false
         locks.polling = true
-        const res = await post("/rebuild")
+        const res = await post("/rebuild?mode=entries")
         assert.equal(res.status, 409)
         assert.match(await res.text(), /poll/)
         assert.equal(runCalls.length, 0)
@@ -88,7 +101,7 @@ describe("GET /rebuild", () => {
         const status = await res.json()
         assert.equal(status.running, false)
         assert.equal(status.mode, "postgres")
-        assert.match(status.result.postgres, /skipped/)
+        assert.match(status.result.postgres.api, /skipped/)
     })
 })
 
@@ -96,22 +109,22 @@ describe("auth on /rebuild", () => {
     beforeEach(() => { config.authConfig.disableAuth = false })
 
     test("401 without a token", async () => {
-        assert.equal((await post("/rebuild")).status, 401)
+        assert.equal((await post("/rebuild?mode=entries")).status, 401)
         assert.equal((await fetch(baseUrl + "/rebuild")).status, 401)
         assert.equal(runCalls.length, 0)
     })
 
     test("202 with a valid token for the configured client", async () => {
-        const res = await post("/rebuild", { token: makeToken({ azp: "query-engine", email: "a@b.it" }) })
+        const res = await post("/rebuild?mode=entries", { token: makeToken({ azp: "query-engine", email: "a@b.it" }) })
         assert.equal(res.status, 202)
     })
 
     test("403 with an expired token, a token of another client or signed with another key", async () => {
-        assert.equal((await post("/rebuild", { token: makeToken({ azp: "query-engine" }, { expiresIn: -60 }) })).status, 403)
-        assert.equal((await post("/rebuild", { token: makeToken({ azp: "someone-else" }) })).status, 403)
-        assert.equal((await post("/rebuild", { token: "not.a.jwt" })).status, 403)
+        assert.equal((await post("/rebuild?mode=entries", { token: makeToken({ azp: "query-engine" }, { expiresIn: -60 }) })).status, 403)
+        assert.equal((await post("/rebuild?mode=entries", { token: makeToken({ azp: "someone-else" }) })).status, 403)
+        assert.equal((await post("/rebuild?mode=entries", { token: "not.a.jwt" })).status, 403)
         // a forged signature ("invalid signature") currently answers 500, not 403: rejected either way
-        const wrongKey = (await post("/rebuild", { token: makeToken({ azp: "query-engine" }, { key: otherPrivateKey }) })).status
+        const wrongKey = (await post("/rebuild?mode=entries", { token: makeToken({ azp: "query-engine" }, { key: otherPrivateKey }) })).status
         assert.ok([403, 500].includes(wrongKey), "rejected: " + wrongKey)
         assert.equal(runCalls.length, 0)
     })

@@ -1,5 +1,5 @@
 // entriesStore on real MongoDB (see helpers/db.js: npm run test:db).
-const { load } = require("./helpers/env")
+const { load, config, resetConfig } = require("./helpers/env")
 const db = require("./helpers/db")
 const { test, describe, before, after, beforeEach } = require("node:test")
 const assert = require("node:assert/strict")
@@ -14,7 +14,10 @@ before(async () => {
     Entries = load("api/models/Entries.js")
 })
 after(db.teardown)
-beforeEach(db.clean)
+beforeEach(async () => {
+    resetConfig()
+    await db.clean()
+})
 
 const byKeyValue = (a, b) => String(a.key ?? "").localeCompare(String(b.key ?? "")) || String(a.value ?? "").localeCompare(String(b.value ?? ""))
 const sorted = async (Model, filter) => (await db.docs(Model, filter)).sort(byKeyValue)
@@ -162,5 +165,102 @@ describe("createCollector", () => {
         assert.equal(await Entries.collection.countDocuments(), 1200)
         await collector.flush() // nothing pending: no write
         assert.equal(bulkWrite.mock.callCount(), 3)
+    })
+})
+
+describe("connectors", () => {
+    test("refs carry the connector, `connectors` is their union", async () => {
+        await store.writeAccumulator({ k: { v: ["public-data"] } }, "https://api/a", {}, "api")
+        await store.writeAccumulator({ k: { v: ["public-data"] } }, "https://eurostat/x.xml", {}, "orion")
+        for (const Model of [Entries, Key, Values]) {
+            const [doc] = await db.docs(Model)
+            assert.deepEqual(doc.connectors, ["api", "orion"])
+            assert.deepEqual(doc.refs.map(r => r.connector), ["api", "orion"])
+        }
+        await assert.rejects(store.writeAccumulator({ k: { v: ["public-data"] } }, "o", {}, "ftp"), /Unknown connector/)
+    })
+
+    test("removeOrigin recomputes `connectors`", async () => {
+        await store.writeAccumulator({ k: { v: ["public-data"] } }, "https://api/a", {}, "api")
+        await store.writeAccumulator({ k: { v: ["public-data"] } }, "https://eurostat/x.xml", {}, "orion")
+        await store.removeOrigin("https://eurostat/x.xml")
+        assert.deepEqual((await db.docs(Entries))[0].connectors, ["api"])
+    })
+
+    test("removeRefs: legacy refs without connector, or the refs of some connectors; docs left without refs deleted", async () => {
+        await store.writeAccumulator({ k: { legacy: ["public-data"] } }, "minio://b/f.json")
+        await store.writeAccumulator({ k: { v: ["public-data"] } }, "https://api/a", {}, "api")
+        await store.writeAccumulator({ k: { v: ["public-data"], o: ["public-data"] } }, "https://eurostat/x.xml", {}, "orion")
+        await store.removeRefs({ withoutConnector: true })
+        assert.deepEqual((await sorted(Entries)).map(e => e.value), ["o", "v"])
+        await store.removeRefs({ connectors: ["orion"] })
+        const entries = await sorted(Entries)
+        assert.deepEqual(entries.map(e => [e.value, e.connectors]), [["v", ["api"]]])
+        assert.deepEqual((await db.docs(Key))[0].connectors, ["api"])
+        await store.removeRefs({}) // nothing asked: nothing removed
+        assert.equal((await db.docs(Entries)).length, 1)
+    })
+})
+
+describe("values not indexed (Orion)", () => {
+    const datapoint = (n, extra = {}) => ({ survey: "NAMA", dimensions: ["Lovech", String(2019 + n)], value: 1000.5 + n, ...extra })
+
+    test("orion: `value` has its key, no values / entries; the key says so with its origin", async () => {
+        const collector = store.createCollector("https://eurostat/a.xml", "orion")
+        await collector.add([datapoint(1), datapoint(2)])
+        await collector.flush()
+        assert.deepEqual(await db.docs(Entries, { key: "value" }), [])
+        assert.deepEqual(await db.docs(Values, { value: "1001.5" }), [])
+        const [key] = await db.docs(Key, { key: "value" })
+        assert.deepEqual(key.valuesNotIndexed, ["https://eurostat/a.xml"])
+        assert.deepEqual(key.visibility, ["public-data"])
+        assert.deepEqual(key.connectors, ["orion"])
+        assert.deepEqual((await sorted(Entries, { key: "dimensions" })).map(e => e.value), ["2020", "2021", "Lovech"])
+    })
+
+    test("other connectors keep their `value` indexed", async () => {
+        const collector = store.createCollector("https://api/b", "api")
+        await collector.add([{ value: 7, name: "not orion" }, datapoint(1)])
+        await collector.flush()
+        assert.deepEqual((await db.docs(Entries, { key: "value" })).map(e => e.value).sort(), ["1001.5", "7"])
+        assert.equal((await db.docs(Key, { key: "value" }))[0].valuesNotIndexed, undefined)
+    })
+
+    test("orion.datapointsNotIndexed decides which fields ([] = all indexed)", async () => {
+        config.orion.datapointsNotIndexed = ["region"]
+        let collector = store.createCollector("o1", "orion")
+        await collector.add([datapoint(1, { region: "LOVECH" })])
+        await collector.flush()
+        assert.deepEqual((await db.docs(Entries, { key: "region" })), [])
+        assert.equal((await db.docs(Entries, { key: "value" })).length, 1)
+        config.orion.datapointsNotIndexed = []
+        collector = store.createCollector("o2", "orion")
+        await collector.add([datapoint(1, { region: "LOVECH" })])
+        await collector.flush()
+        assert.equal((await db.docs(Entries, { key: "region" })).length, 1)
+    })
+
+    test("removeOrigin takes the origin out of valuesNotIndexed (the key stays while others use it)", async () => {
+        for (const origin of ["A", "B"]) {
+            const collector = store.createCollector(origin, "orion")
+            await collector.add([datapoint(1)])
+            await collector.flush()
+        }
+        await store.removeOrigin("A")
+        assert.deepEqual((await db.docs(Key, { key: "value" }))[0].valuesNotIndexed, ["B"])
+        await store.removeOrigin("B")
+        assert.deepEqual(await db.docs(Key, { key: "value" }), [])
+    })
+
+    test("a key used by Orion and by other records: shared refs, only the Orion origins listed", async () => {
+        let collector = store.createCollector("A", "orion")
+        await collector.add([datapoint(1)])
+        await collector.flush()
+        collector = store.createCollector("https://api/b", "api")
+        await collector.add([{ value: 7 }])
+        await collector.flush()
+        await store.removeOrigin("A")
+        const [key] = await db.docs(Key, { key: "value" })
+        assert.deepEqual([key.refs.map(r => r.origin), key.valuesNotIndexed, key.connectors], [["https://api/b"], [], ["api"]])
     })
 })

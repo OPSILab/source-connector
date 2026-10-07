@@ -1,6 +1,5 @@
 const logger = require("percocologger");
 const log = logger.info;
-const Datapoints = require("../models/Datapoint");
 const Dimensions = require("../models/Dimensions");
 const config = require("../../config");
 const minioWriter = require("../../inputConnectors/minioConnector");
@@ -10,6 +9,9 @@ const { updateJWT } = require("../../utils/keycloak");
 let bearerToken;
 const Entity = require("../models/Entity")
 const { replaceRecords } = require("../../utils/sourceRecords")
+// Orion data goes to the Orion collection (collections.orion): datapoints upserted by dupl_hash (utils/datapoints.js),
+// other records replaced by dataset url (utils/sourceRecords.js)
+const { upsertDatapoints, openDatapointsWriter } = require("../../utils/datapoints")
 const { sleep, verifyLostSubscription, checkMustUpdateDistributionDcatAp, fastAndPartialOrionizeEntity } = require("../../utils/common")
 updateJWT()
   .then((token) => {
@@ -104,15 +106,17 @@ async function executeRequest(req, res) {
 
     let retry = 2;
     let correctlyInserted = false
+    const sqlName = id + "-" + path.basename(new URL(downloadURL).pathname)
     if (!mapID) {
       const response = await axios.get(downloadURL);
       if (response?.data?.data?.datapoints)
-        await Datapoints.insertMany(response.data.data.datapoints);
+        await upsertDatapoints(response.data.data.datapoints, downloadURL, { logName: "orion-notify " + id, sqlName });
       else
-        // same ingestion as apiConnector (upsert by url): not tracked in Status, so minio sync never deletes it
+        // the dataset as it is: Orion records, replaced by dataset url
         await replaceRecords(response.data, downloadURL, {
           logName: "orion-notify " + id,
-          sqlName: id + "-" + path.basename(new URL(downloadURL).pathname)
+          sqlName,
+          connector: "orion"
         });
       correctlyInserted = true // reached only if the insertion above did not throw
     }
@@ -206,7 +210,8 @@ async function executeRequest(req, res) {
             logger.info(response.data);
             let outputId = response.data[response.data.length - 1].MAPPING_REPORT.outputId
             let lastId
-            let purged = false
+            // opened at the first non-empty chunk: upserts the datapoints of this dataset (downloadURL)
+            let writer
             for (let chunkIndex = 0; (response.data[0] || response.data.id); chunkIndex++) {
               //while (response.data[0] || response.data.id) {
               logger.info(response.data?.status || response.status || response.statusCode || response.data || response);
@@ -217,20 +222,16 @@ async function executeRequest(req, res) {
                 }
               })
               if (response.data[0]) {
-                if (!purged && !config.upsertRecords)
-                  await Datapoints.deleteMany({ survey: response.data[0].survey });
                 const dataToInsert = response.data.map((d) => {
                   return {
                     ...d,
                     fromUrl: downloadURL,
                   };
                 });
-                if (config.upsertRecords)
-                  await Datapoints.upsertMany(dataToInsert); //.map(d => {return {...d, dimensions : {...(d.dimensions), year : d.dimensions.time}}})) //TODO check if datapoints or other data and generalize insertion
-                else
-                  await Datapoints.insertMany(dataToInsert)
+                if (!writer)
+                  writer = await openDatapointsWriter(downloadURL, { logName: "orion-notify " + id, sqlName })
+                await writer.add(dataToInsert)
                 lastId = response.data[response.data.length - 1]?._id
-                purged = true;
                 const surveyKey = dataToInsert[0].survey.toUpperCase().replace(/\./g, "");
                 const dimensionsFound = await Dimensions.findOne({ survey: surveyKey });
                 const uniqueKeys = new Set();
@@ -261,6 +262,8 @@ async function executeRequest(req, res) {
               else if (chunkIndex === 0)
                 logger.warn("No datapoints found in the first chunk, skipping insertion.");
             }
+            if (writer)
+              await writer.close()
             correctlyInserted = true;
           } catch (error) {
             logger.error("Error inserting datapoints:", error);

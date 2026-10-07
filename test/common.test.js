@@ -17,7 +17,27 @@ describe("getEntries", () => {
         assert.deepEqual(entries, {
             city: { Rome: ["public-data"] },
             population: { "2800000": ["public-data"] },
-            tags: { '["a","b"]': ["public-data"] }
+            tags: { a: ["public-data"], b: ["public-data"] }
+        })
+    })
+
+    test("datapoints: every dimension is a value of `dimensions`, stored once whatever the arrays it appears in", async () => {
+        const entries = await entriesOf([{ json: [
+            { survey: "NAMA", dimensions: ["Lovech", "Euro per inhabitant", "2020"], value: 1 },
+            { survey: "NAMA", dimensions: ["Lovech", "Euro per inhabitant", "2021"], value: 2 },
+            { survey: "NAMA", dimensions: ["Trento", "Euro per inhabitant", "2021"], value: 1 }
+        ] }], "jsonArray")
+        assert.deepEqual(Object.keys(entries.dimensions).sort(), ["2020", "2021", "Euro per inhabitant", "Lovech", "Trento"])
+        assert.deepEqual(Object.keys(entries.value).sort(), ["1", "2"])
+    })
+
+    test("nested objects become dotted keys (as MongoDB queries them)", async () => {
+        const entries = await entriesOf([{ title: { type: "Property", value: "Kakrina" }, items: [{ name: "a" }, { name: "b", n: 1 }] }], "json")
+        assert.deepEqual(entries, {
+            "title.type": { Property: ["public-data"] },
+            "title.value": { Kakrina: ["public-data"] },
+            "items.name": { a: ["public-data"], b: ["public-data"] },
+            "items.n": { "1": ["public-data"] }
         })
     })
 
@@ -55,6 +75,28 @@ describe("getEntries", () => {
         await common.getEntries([{ k: "v" }], "json", "a@b.it/x", entries)
         await common.getEntries([{ k: "v", other: 1 }], "json", undefined, entries)
         assert.deepEqual(entries, { k: { v: ["a@b.it", "public-data"] }, other: { "1": ["public-data"] } })
+    })
+
+    test("undefined fields are not indexed (they used to become \"undefined\")", async () => {
+        const entries = {}
+        await common.getEntries([{ k: "v", sourceId: undefined }], "json", undefined, entries)
+        assert.deepEqual(entries, { k: { v: ["public-data"] } })
+    })
+})
+
+describe("entryPairs", () => {
+    const { entryPairs } = common
+    test("scalars and arrays of scalars", () => {
+        assert.deepEqual(entryPairs("k", "v"), [["k", "v"]])
+        assert.deepEqual(entryPairs("k", null), [["k", null]])
+        assert.deepEqual(entryPairs("k", [1, "a", true]), [["k", 1], ["k", "a"], ["k", true]])
+    })
+
+    test("what stays a JSON value: empty, mixed, nested arrays, odd field names, too deep", () => {
+        for (const value of [[], {}, [1, { a: 1 }], [[1, 2], [3, 4]], { "a.b": 1 }, { $x: 1 }, [{ "a.b": 1 }]])
+            assert.deepEqual(entryPairs("k", value), [["k", value]])
+        const deep = { a: { b: { c: { d: { e: 1 } } } } }
+        assert.deepEqual(entryPairs("k", deep), [["k.a.b.c.d", { e: 1 }]])
     })
 })
 

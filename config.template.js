@@ -49,7 +49,11 @@ module.exports = {
     fiwareServicePath: "",
     checkSubscriptionInterval: 0,
     recreateSubscriptionAtInterval: 0,
-    useNgsiBroker: false
+    useNgsiBroker: false,
+    // Fields of the Orion data (datapoints) whose values are not indexed in values / entries (the key is): a measure
+    // like `value` has hundreds of thousands of distinct values. They stay searchable, they are just not suggested
+    // (the frontend says so). After a change: POST /api/rebuild?mode=entries&connector=orion.
+    datapointsNotIndexed: ["value"]
   },
   logLevel: "info",
   syncInterval: 86400000,
@@ -82,9 +86,18 @@ module.exports = {
   },
   queryOptions: {
     simpleSearch: true,
-    advancedSearch: true,
-    SQLQuery: true,
+    advancedSearch: true, // false: nothing is written to MongoDB, whatever collections.*.toMongo says
+    SQLQuery: true,       // false: nothing is written to PostgreSQL, whatever collections.*.toPostgres says
     graphQLQuery: true
+  },
+  // One MongoDB collection and one PostgreSQL table per connector (utils/collections.js); the Query-Engine needs the
+  // same collection names. toMongo / toPostgres: where the connector's data is written. Every name must be different.
+  // MinIO: one PostgreSQL table per bucket, as before. Moving from the single `sources` collection:
+  // scripts/migrateCollections.js
+  collections: {
+    api: { mongo: "sources", toMongo: true, postgres: "sources", toPostgres: true },
+    orion: { mongo: "datapoints", toMongo: true, postgres: "datapoints", toPostgres: false },
+    minio: { mongo: "minio", toMongo: true, toPostgres: true }
   },
   apiConnectorConfig: {
     upsertRecords: false,
