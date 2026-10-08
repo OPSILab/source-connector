@@ -17,7 +17,7 @@ const log = logger.info
 process.queryEngine = { updatedOwners: {} }
 const client = require("./postgresConnector");
 const axios = require('axios')
-const { writeAccumulator, removeOrigin } = require('../utils/entriesStore')
+const { writeAccumulator, removeOrigin, entriesFormat } = require('../utils/entriesStore')
 let syncing
 let touchedDuringSync = new Set() // origins (re)indexed while a sync is running, never swept by that sync
 
@@ -466,7 +466,7 @@ async function insertInDBs(newObject, record, align) {
       if (type != "raw")
         await getEntries(insertingSource, type, record?.s3?.object?.key || record.name, acc)
       await removeOrigin(origin)          // drops what the previous version of the file referenced
-      await writeAccumulator(acc, origin, {}, "minio")
+      await writeAccumulator(acc, origin, {}, "minio", entriesFormat(insertingSource?.[0]))
     }
     catch (error) {
       logger.error(error)

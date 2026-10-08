@@ -264,3 +264,45 @@ describe("values not indexed (Orion)", () => {
         assert.deepEqual([key.refs.map(r => r.origin), key.valuesNotIndexed, key.connectors], [["https://api/b"], [], ["api"]])
     })
 })
+
+describe("formats", () => {
+    test("entriesFormat: where getEntries finds the entries of a document", () => {
+        assert.equal(store.entriesFormat({ city: "Rome" }), "object")
+        assert.equal(store.entriesFormat({ json: [{ city: "Rome" }] }), "json")
+        assert.equal(store.entriesFormat({ csv: [{ city: "Rome" }] }), "csv")
+        assert.equal(store.entriesFormat({ type: "FeatureCollection", features: [{ properties: { city: "Rome" } }] }), "geojson")
+        assert.equal(store.entriesFormat(undefined), "object")
+    })
+
+    test("collector: one ref per format of the documents, `formats` is their union", async () => {
+        const collector = store.createCollector("https://api/mixed", "api")
+        await collector.add([
+            { city: "Rome" },
+            { type: "FeatureCollection", features: [{ properties: { city: "Rome", poi: "Colosseum" } }] },
+            { csv: [{ city: "Milan" }] }
+        ])
+        await collector.flush()
+        const rome = (await db.docs(Entries, { key: "city", value: "Rome" }))[0]
+        assert.deepEqual(rome.formats.sort(), ["geojson", "object"])
+        assert.deepEqual(rome.refs.map(r => r.format).sort(), ["geojson", "object"])
+        assert.deepEqual((await db.docs(Entries, { key: "poi" }))[0].formats, ["geojson"])
+        assert.deepEqual((await db.docs(Values, { value: "Milan" }))[0].formats, ["csv"])
+        assert.deepEqual((await db.docs(Key, { key: "city" }))[0].formats.sort(), ["csv", "geojson", "object"])
+        // the GeoJSON envelope is not indexed, only the properties of the features
+        assert.deepEqual(await db.docs(Key, { key: "type" }), [])
+    })
+
+    test("removeOrigin / removeRefs recompute `formats`", async () => {
+        await store.writeAccumulator({ city: { Rome: ["public-data"] } }, "https://api/a", {}, "api", "object")
+        await store.writeAccumulator({ city: { Rome: ["public-data"] } }, "minio://b/f.csv", {}, "minio", "csv")
+        await store.removeOrigin("minio://b/f.csv")
+        assert.deepEqual((await db.docs(Entries, { key: "city" }))[0].formats, ["object"])
+        await store.writeAccumulator({ city: { Rome: ["public-data"] } }, "minio://b/f.csv", {}, "minio", "csv")
+        await store.removeRefs({ connectors: ["api"] })
+        assert.deepEqual((await db.docs(Entries, { key: "city" }))[0].formats, ["csv"])
+    })
+
+    test("an unknown format is refused", async () => {
+        await assert.rejects(store.writeAccumulator({ a: { b: ["public-data"] } }, "o", {}, "api", "xml"), /Unknown format/)
+    })
+})

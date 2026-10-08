@@ -56,7 +56,7 @@ describe("upsertDatapoints", () => {
         const dims = await db.docs(Entries, { key: "dimensions" })
         assert.deepEqual(dims.map(e => e.value).sort(), ["2020", "2021", "Euro per inhabitant", "Lovech"])
         assert.deepEqual(dims[0].connectors, ["orion"])
-        assert.deepEqual(dims[0].refs, [{ origin: URL_A, visibility: "public-data", connector: "orion" }])
+        assert.deepEqual(dims[0].refs, [{ origin: URL_A, visibility: "public-data", connector: "orion", format: "object" }])
         assert.deepEqual(await db.docs(Entries, { key: "value" }), [])
         assert.deepEqual((await db.docs(Key, { key: "value" }))[0].valuesNotIndexed, [URL_A])
         assert.deepEqual(await db.docs(Entries, { key: "sourceId" }), [])

@@ -1,10 +1,14 @@
 // Keys / Values / Entries store with per-origin references.
 //
 // Document shape (Entries; Key has only `key`, Values only `value`):
-//   { key, value, visibility: ["public-data"], connectors: ["api"],
-//     refs: [{ origin: "<url | file>", visibility: "public-data", connector: "api" }] }
+//   { key, value, visibility: ["public-data"], connectors: ["api"], formats: ["object"],
+//     refs: [{ origin: "<url | file>", visibility: "public-data", connector: "api", format: "object" }] }
 // connector: api | orion | minio (utils/collections.js), so that the suggestions follow the collections searched;
 // `connectors` is the union of the refs' connectors (like `visibility`), recomputed when an origin is removed.
+// format: where the entry was found in its document, i.e. the Advanced search file type that finds it (FORMATS,
+// entriesFormat): object (top-level fields: JSON), json (rows of a JSON array: JSON), csv (CSV rows), geojson
+// (properties of the features: GeoJSON). `formats` is their union, like `connectors`. Refs written before formats
+// existed have none: the rebuild (or the MinIO sync) writes them again.
 // Refs written before connectors existed have none: the rebuild (utils/rebuild.js) replaces them.
 // Keys whose values are not indexed for some origins (datapointRules.valuesNotIndexed, e.g. the datapoints' `value`)
 // also have valuesNotIndexed: ["<origin>", ...]: the Query-Engine tells the user their values are not suggested.
@@ -27,10 +31,24 @@ const BULK_CHUNK_SIZE = 1000      // operations per bulkWrite
 const COLLECTOR_CHUNK_ITEMS = 500 // items accumulated in RAM before a flush
 
 const HAS_REFS = { "refs.origin": { $exists: true } }
-// `connectors` recomputed from the refs (left out when no ref has a connector: legacy docs)
-const CONNECTORS_OF_REFS = {
-  $cond: [{ $gt: [{ $size: { $setUnion: ["$refs.connector", []] } }, 0] }, { $setUnion: ["$refs.connector", []] }, "$$REMOVE"]
+const FORMATS = ["object", "json", "csv", "geojson"]
+
+// The format of the entries of a document - the same cases as common.getEntries
+function entriesFormat(doc) {
+  if (doc?.csv)
+    return "csv"
+  if (Array.isArray(doc?.json))
+    return "json"
+  if (doc?.features)
+    return "geojson"
+  return "object"
 }
+// `connectors` / `formats` recomputed from the refs (left out when no ref has one: legacy docs)
+const unionOfRefs = field => ({
+  $cond: [{ $gt: [{ $size: { $setUnion: ["$refs." + field, []] } }, 0] }, { $setUnion: ["$refs." + field, []] }, "$$REMOVE"]
+})
+const CONNECTORS_OF_REFS = unionOfRefs("connector")
+const FORMATS_OF_REFS = unionOfRefs("format")
 
 let indexesPromise
 function ensureIndexes() {
@@ -53,20 +71,26 @@ function ensureIndexes() {
   return indexesPromise
 }
 
-function ref(origin, visibility, connector) {
-  // field order must stay the same (origin, visibility, connector): $addToSet compares whole objects
-  return connector === undefined ? { origin, visibility } : { origin, visibility, connector }
+function ref(origin, visibility, connector, format) {
+  // field order must stay the same (origin, visibility, connector, format): $addToSet compares whole objects
+  const r = { origin, visibility }
+  if (connector !== undefined)
+    r.connector = connector
+  if (format !== undefined)
+    r.format = format
+  return r
 }
 
-function upsertOp(match, visibility, origin, connector, extra = {}) {
+function upsertOp(match, visibility, origin, connector, format, extra = {}) {
   return {
     updateOne: {
       filter: { ...match, ...HAS_REFS },
       update: {
         $addToSet: {
           visibility: { $each: visibility },
-          refs: { $each: visibility.map(v => ref(origin, v, connector)) },
+          refs: { $each: visibility.map(v => ref(origin, v, connector, format)) },
           ...(connector === undefined ? {} : { connectors: connector }),
+          ...(format === undefined ? {} : { formats: format }),
           ...extra
         }
       },
@@ -90,9 +114,12 @@ async function bulkInChunks(Model, ops) {
 // acc = { [key]: { [stringifiedValue]: [visibility, ...] } }  (same shape produced by common.getEntries)
 // keysOnly = { [key]: [visibility, ...] }: keys whose values are not indexed (no values / entries for them)
 // connector: api | orion | minio (undefined only in old callers / tests: refs without connector)
-async function writeAccumulator(acc, origin, keysOnly = {}, connector) {
+// format: object | json | csv | geojson, see entriesFormat (undefined only in old callers / tests)
+async function writeAccumulator(acc, origin, keysOnly = {}, connector, format) {
   if (connector !== undefined && !CONNECTORS.includes(connector))
     throw new Error(`Unknown connector "${connector}"`)
+  if (format !== undefined && !FORMATS.includes(format))
+    throw new Error(`Unknown format "${format}"`)
   await ensureIndexes()
   const entryOps = []
   const keyOps = []
@@ -102,7 +129,7 @@ async function writeAccumulator(acc, origin, keysOnly = {}, connector) {
     const keyVisibility = new Set()
     for (const value in acc[key]) {
       const visibility = acc[key][value]
-      entryOps.push(upsertOp({ key, value }, visibility, origin, connector))
+      entryOps.push(upsertOp({ key, value }, visibility, origin, connector, format))
       let valueVisibility = valuesVisibility.get(value)
       if (!valueVisibility)
         valuesVisibility.set(value, valueVisibility = new Set())
@@ -111,16 +138,16 @@ async function writeAccumulator(acc, origin, keysOnly = {}, connector) {
         valueVisibility.add(v)      // union over all keys holding the value
       }
     }
-    keyOps.push(upsertOp({ key }, [...keyVisibility], origin, connector))
+    keyOps.push(upsertOp({ key }, [...keyVisibility], origin, connector, format))
   }
   for (const key in keysOnly)
-    keyOps.push(upsertOp({ key }, keysOnly[key], origin, connector, { valuesNotIndexed: origin }))
-  const valueOps = [...valuesVisibility].map(([value, visibility]) => upsertOp({ value }, [...visibility], origin, connector))
+    keyOps.push(upsertOp({ key }, keysOnly[key], origin, connector, format, { valuesNotIndexed: origin }))
+  const valueOps = [...valuesVisibility].map(([value, visibility]) => upsertOp({ value }, [...visibility], origin, connector, format))
 
   await bulkInChunks(Entries, entryOps)
   await bulkInChunks(Key, keyOps)
   await bulkInChunks(Values, valueOps)
-  logger.info(`Keys/values/entries written for ${origin}: ${keyOps.length} keys, ${valueOps.length} values, ${entryOps.length} entries`)
+  logger.info(`Keys/values/entries written for ${origin}${format ? " (" + format + ")" : ""}: ${keyOps.length} keys, ${valueOps.length} values, ${entryOps.length} entries`)
 }
 
 // Removes every reference to `origin`; docs left without references are deleted.
@@ -136,7 +163,7 @@ async function removeOrigin(origin) {
     // 2. docs shared with other origins -> drop this origin and recompute visibility
     const updated = await Model.collection.updateMany({ "refs.origin": origin }, [
       { $set: { refs: { $filter: { input: "$refs", cond: { $ne: ["$$this.origin", origin] } } } } },
-      { $set: { visibility: { $setUnion: ["$refs.visibility", []] }, connectors: CONNECTORS_OF_REFS } },
+      { $set: { visibility: { $setUnion: ["$refs.visibility", []] }, connectors: CONNECTORS_OF_REFS, formats: FORMATS_OF_REFS } },
       ...(Model === Key ? [{
         $set: {
           valuesNotIndexed: {
@@ -152,13 +179,13 @@ async function removeOrigin(origin) {
 // One collector per origin: add() only computes entries in RAM, the DB is written every
 // COLLECTOR_CHUNK_ITEMS items and on the final flush().
 function createCollector(origin, connector) {
-  let acc = {}
-  let keysOnly = {}
+  let byFormat = {} // format -> { acc, keysOnly }: the refs of each format are written separately
   let pending = 0
   return {
     async add(items) {
       for (const item of items) {
         const { _id, ...data } = item // _id is a mongo id, not a data field
+        const { acc, keysOnly } = byFormat[entriesFormat(data)] ||= { acc: {}, keysOnly: {} }
         if (connector == "orion")
           delete data.dupl_hash // the Datapoint dedup key (the whole document as JSON): one value per datapoint
         // fields whose values are not indexed: only their key (same visibility as getEntries without a name)
@@ -174,12 +201,11 @@ function createCollector(origin, connector) {
     async flush() {
       if (!pending)
         return
-      const snapshot = acc
-      const snapshotKeys = keysOnly
-      acc = {}
-      keysOnly = {}
+      const snapshot = byFormat
+      byFormat = {}
       pending = 0
-      await writeAccumulator(snapshot, origin, snapshotKeys, connector)
+      for (const [format, { acc, keysOnly }] of Object.entries(snapshot))
+        await writeAccumulator(acc, origin, keysOnly, connector, format)
     }
   }
 }
@@ -200,7 +226,7 @@ async function removeRefs({ withoutConnector = false, connectors = [] } = {}) {
   for (const Model of [Entries, Key, Values]) {
     const updated = await Model.collection.updateMany({ ...HAS_REFS, ...match }, [
       { $set: { refs: { $filter: { input: "$refs", cond: { $not: [doomed] } } } } },
-      { $set: { visibility: { $setUnion: ["$refs.visibility", []] }, connectors: CONNECTORS_OF_REFS } },
+      { $set: { visibility: { $setUnion: ["$refs.visibility", []] }, connectors: CONNECTORS_OF_REFS, formats: FORMATS_OF_REFS } },
       ...(Model === Key ? [{
         $set: {
           // origins of removed refs: valuesNotIndexed keeps only those still referenced
@@ -216,6 +242,8 @@ async function removeRefs({ withoutConnector = false, connectors = [] } = {}) {
 }
 
 module.exports = {
+  FORMATS,
+  entriesFormat,
   createCollector,
   removeRefs,
   removeOrigin,

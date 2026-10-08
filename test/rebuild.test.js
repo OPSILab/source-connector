@@ -78,7 +78,7 @@ describe("rebuildEntries", () => {
         const colors = await db.docs(Entries, { key: "color" })
         assert.deepEqual(colors.map(e => e.value).sort(), ["blue", "red"])
         const red = colors.find(e => e.value == "red")
-        assert.deepEqual([red.refs, red.connectors], [[{ origin: "https://api/a", visibility: "public-data", connector: "api" }], ["api"]])
+        assert.deepEqual([red.refs, red.connectors, red.formats], [[{ origin: "https://api/a", visibility: "public-data", connector: "api", format: "object" }], ["api"], ["object"]])
         const year = (await db.docs(Entries, { key: "dimensions", value: "2020" }))[0]
         assert.deepEqual(year.refs.map(r => [r.origin, r.connector]).sort(), [["https://eurostat/x.xml", "orion"], ["https://eurostat/y.xml", "orion"]])
         assert.deepEqual((await db.docs(Entries, { key: "value" })), []) // orion.datapointsNotIndexed
