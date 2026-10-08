@@ -29,10 +29,12 @@ async function before_formats() {
     await store.writeAccumulator({ city: { Rome: ["public-data"] } }, GEO, {}, "orion")
     await store.writeAccumulator({ city: { Rome: ["public-data"] } }, PLAIN, {}, "orion")
     await store.writeAccumulator({ city: { Rome: ["public-data"] } }, "https://api/a", {}, "api")
+    // each with its dupl_hash: the Datapoint schema has a unique index on it (upsertRecords), built by mongoose in
+    // background - without it the test fails or passes depending on timing
     await Orion.collection.insertMany([
-        { fromUrl: DP, survey: "NAMA", dimensions: ["Lovech"], value: 1 },
-        { fromUrl: GEO, type: "FeatureCollection", features: [{ properties: { city: "Rome" } }] },
-        { fromUrl: PLAIN, city: "Rome" }
+        { fromUrl: DP, survey: "NAMA", dimensions: ["Lovech"], value: 1, dupl_hash: "dp" },
+        { fromUrl: GEO, type: "FeatureCollection", features: [{ properties: { city: "Rome" } }], dupl_hash: "geo" },
+        { fromUrl: PLAIN, city: "Rome", dupl_hash: "plain" }
     ])
 }
 const refsOf = async (Model, filter) => (await db.docs(Model, filter))[0].refs.map(r => [r.origin, r.format ?? null]).sort()
