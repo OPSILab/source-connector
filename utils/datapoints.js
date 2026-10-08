@@ -1,15 +1,20 @@
 // Datapoints of the Orion datasets (data model mapper output, or a { data: { datapoints } } payload): written to
-// the Orion collection (collections.orion.mongo, "datapoints") as before, with the legacy Datapoint model:
-// upsertMany by dupl_hash, nothing deleted when a dataset changes. The dataset url is `fromUrl` (the origin of
-// their keys / values / entries refs), `source` is the provider (EUROSTAT, ...).
+// the Orion collection (collections.orion.mongo, "datapoints") with the legacy Datapoint model, as before:
+//   config.upsertRecords   upsertMany by dupl_hash (unique index on it), nothing deleted
+//   otherwise              insertMany; with replaceSurvey (the data model mapper flow) the datapoints of the survey
+//                          are deleted first, at the first block - the survey is emptied and filled again
+// The dataset url is `fromUrl` (the origin of their keys / values / entries refs), `source` is the provider
+// (EUROSTAT, ...). When the survey is replaced, the refs of the dataset are removed too (its old values).
 // PostgreSQL (collections.orion.toPostgres, off by default: tens of millions of rows): the rows of the dataset are
 // replaced, table collections.orion.postgres.
 
+const config = require("../config")
 const logger = require("percocologger")
 const { collectionSettings, collectionModel } = require("./collections")
-const { createCollector } = require("./entriesStore")
+const { createCollector, removeOrigin } = require("./entriesStore")
 const { insertToPostgre, deletePostgresOrigin } = require("./sourceRecords")
 const { DATAPOINT_FILTER } = require("./datapointRules")
+const { cleanSurveyName } = require("../api/models/Datapoint")
 
 // As the mapper sends them: its own _id is not ours (and $set on _id fails on an existing document)
 function cleanDatapoint(datapoint, origin) {
@@ -19,12 +24,21 @@ function cleanDatapoint(datapoint, origin) {
     return d
 }
 
+// The survey as stored: by upsertMany (cleanSurveyName) or by insertMany (uppercase only, the schema's setter)
+function storedSurveys(survey) {
+    if (typeof survey !== "string" || !survey)
+        return []
+    return [...new Set([survey, survey.toUpperCase(), cleanSurveyName(survey)])]
+}
+
 // Writer for the datapoints of one dataset, block by block (the chunks of the mapper): add(datapoints), close()
-async function openDatapointsWriter(origin, { logName = origin, sqlName } = {}) {
+async function openDatapointsWriter(origin, { logName = origin, sqlName, replaceSurvey = false } = {}) {
     const settings = collectionSettings("orion")
     const Datapoint = collectionModel("orion")
+    const upsert = config.upsertRecords == true
     const collector = settings.toMongo ? createCollector(origin, "orion") : undefined
     let pgCleared = false
+    let surveyReplaced = false
     let count = 0
     return {
         async add(datapoints) {
@@ -32,7 +46,19 @@ async function openDatapointsWriter(origin, { logName = origin, sqlName } = {}) 
             if (!docs.length)
                 return
             if (settings.toMongo) {
-                await Datapoint.upsertMany(docs)
+                if (!upsert && replaceSurvey && !surveyReplaced) {
+                    const surveys = storedSurveys(docs[0].survey)
+                    if (surveys.length) {
+                        const { deletedCount } = await Datapoint.collection.deleteMany({ survey: { $in: surveys } })
+                        logger.info(`Datapoints of survey ${docs[0].survey} deleted before the new ones: ${deletedCount}`)
+                    }
+                    await removeOrigin(origin) // the suggestions of the old datapoints
+                    surveyReplaced = true
+                }
+                if (upsert)
+                    await Datapoint.upsertMany(docs)
+                else
+                    await Datapoint.insertMany(docs)
                 await collector.add(docs)
             }
             if (settings.toPostgres) {

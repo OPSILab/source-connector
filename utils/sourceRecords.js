@@ -4,6 +4,7 @@
 // Where each connector writes: config.collections (utils/collections.js).
 
 const logger = require('percocologger')
+const config = require('../config')
 const client = require('../inputConnectors/postgresConnector')
 const { createCollector, removeOrigin } = require('./entriesStore')
 const { collectionSettings, collectionModel } = require('./collections')
@@ -143,9 +144,10 @@ async function storeRecords(records, origin, { connector = "api", collector, log
         return
     const settings = collectionSettings(connector)
     if (settings.toMongo) {
-        if (connector == "orion")
-            // the Orion collection has the Datapoint schema: unique dupl_hash (with upsertRecords), so every document
-            // needs one, the same way the datapoints get it
+        if (connector == "orion" && config.upsertRecords == true)
+            // the Orion collection has the Datapoint schema: unique dupl_hash with upsertRecords, so every document
+            // needs one, the same way the datapoints get it (without it there is no index on dupl_hash: insertMany,
+            // the origin has just been cleared)
             await collectionModel(connector).upsertMany(records)
         else
             await collectionModel(connector).insertMany(records)

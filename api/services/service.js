@@ -229,7 +229,8 @@ async function executeRequest(req, res) {
                   };
                 });
                 if (!writer)
-                  writer = await openDatapointsWriter(downloadURL, { logName: "orion-notify " + id, sqlName })
+                  // without upsertRecords the survey is emptied and filled again, as before
+                  writer = await openDatapointsWriter(downloadURL, { logName: "orion-notify " + id, sqlName, replaceSurvey: true })
                 await writer.add(dataToInsert)
                 lastId = response.data[response.data.length - 1]?._id
                 const surveyKey = dataToInsert[0].survey.toUpperCase().replace(/\./g, "");

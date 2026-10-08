@@ -105,3 +105,47 @@ describe("upsertDatapoints", () => {
         await Custom.collection.deleteMany({})
     })
 })
+
+describe("without upsertRecords (insert; the mapper flow empties the survey first)", () => {
+    const URL_B = "https://ec.europa.eu/eurostat/api/demo_r_gind3.xml"
+    beforeEach(async () => {
+        config.upsertRecords = false
+        // as in production with upsertRecords false: no unique index on dupl_hash (the tests' schema made one)
+        await Orion.init?.()
+        await Orion.collection.dropIndex?.("dupl_hash_1").catch(() => { })
+    })
+
+    test("replaceSurvey: the survey is emptied at the first block, then filled; its old values leave the suggestions", async () => {
+        await datapoints.upsertDatapoints([mapped(1), mapped(2)], URL_A, { replaceSurvey: true })
+        await datapoints.upsertDatapoints([{ ...mapped(9), survey: "demo_r_gind3", dimensions: ["Sofia"] }], URL_B, { replaceSurvey: true })
+        // a datapoint written by the old code: survey uppercase only (insertMany), no fromUrl
+        await Orion.collection.insertOne({ source: "EUROSTAT", survey: "NAMA_10R.3GDP", dimensions: ["Old"], value: 0 })
+
+        const writer = await datapoints.openDatapointsWriter(URL_A, { replaceSurvey: true })
+        await writer.add([mapped(5, { dimensions: ["Lovech", "Euro per inhabitant", "2030"] })])
+        await writer.add([mapped(6, { dimensions: ["Lovech", "Euro per inhabitant", "2031"] })]) // not emptied again
+        assert.equal(await writer.close(), 2)
+
+        const docs = await db.docs(Orion)
+        const demo = d => String(d.survey).toUpperCase() == "DEMO_R_GIND3"
+        assert.deepEqual(docs.filter(d => !demo(d)).map(d => d.value).sort(), [1005, 1006])
+        assert.equal(docs.filter(demo).length, 1) // other survey untouched
+        assert.ok(docs.every(d => d.dupl_hash === undefined)) // inserted, no dedup key
+        const years = (await db.docs(Entries, { key: "dimensions" })).map(e => e.value)
+        assert.ok(years.includes("2030") && years.includes("2031") && years.includes("Sofia"))
+        assert.ok(!years.includes("2020") && !years.includes("2021")) // the old datapoints' values are gone
+    })
+
+    test("without replaceSurvey (a { data: { datapoints } } payload): inserted, nothing deleted", async () => {
+        await datapoints.upsertDatapoints([mapped(1)], URL_A)
+        await datapoints.upsertDatapoints([mapped(1)], URL_A)
+        assert.equal((await db.docs(Orion)).length, 2)
+    })
+
+    test("Orion records that are not datapoints: inserted after their origin is cleared", async () => {
+        const { replaceRecords } = load("utils/sourceRecords.js")
+        await replaceRecords([{ city: "Rome" }, { city: "Milan" }], URL_B, { connector: "orion" })
+        await replaceRecords([{ city: "Turin" }], URL_B, { connector: "orion" })
+        assert.deepEqual((await db.docs(Orion)).map(d => d.city), ["Turin"])
+    })
+})
