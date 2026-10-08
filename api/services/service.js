@@ -9,6 +9,7 @@ const { updateJWT } = require("../../utils/keycloak");
 let bearerToken;
 const Entity = require("../models/Entity")
 const { replaceRecords } = require("../../utils/sourceRecords")
+const { createQueue } = require("../../utils/requestQueue")
 // Orion data goes to the Orion collection (collections.orion): datapoints upserted by dupl_hash (utils/datapoints.js),
 // other records replaced by dataset url (utils/sourceRecords.js)
 const { upsertDatapoints, openDatapointsWriter } = require("../../utils/datapoints")
@@ -58,7 +59,6 @@ function extractDownloadURL(ent) {
   return downloadURL
 }
 
-let requestStack = []
 async function executeRequest(req, res) {
   logger.info({ body: JSON.stringify(req.body) });
 
@@ -312,27 +312,25 @@ async function executeRequest(req, res) {
   return "OK";
 }
 
+const notifications = createQueue(executeRequest)
+
 module.exports = {
 
+  // notifications waiting or being processed (GET /api/queue)
   queue() {
-    return requestStack.length
+    return notifications.size()
   },
 
+  // One notification at a time, in arrival order: an error ends that notification only (it is returned, as before),
+  // the next ones go on - see utils/requestQueue.js
   notifyPath: async (req, res) => {
-    let turn = requestStack.length
-    let result
-    requestStack.push([req, res])
-    while (turn && requestStack.length > turn)
-      await sleep(100)
     try {
-      result = await executeRequest(...requestStack[0])
+      return await notifications.push(req, res)
     }
     catch (error) {
       logger.error(error)
       return error
     }
-    requestStack.shift()
-    return result
   },
 
   sync() {
