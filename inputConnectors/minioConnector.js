@@ -8,7 +8,7 @@ const Values = require('../api/models/Value')
 const Entries = require('../api/models/Entries')
 // MinIO files have their own collection (collections.minio.mongo, "minio"): everything in it comes from MinIO, so the
 // sync empties it and the Status collection is no longer needed to tell MinIO documents from the others.
-const { collectionSettings, collectionModel } = require('../utils/collections')
+const { collectionSettings, collectionModel, bucketTable: bucketTableName } = require('../utils/collections')
 const Source = () => collectionModel("minio")
 const minioSettings = () => collectionSettings("minio")
 const minioClient = new Minio.Client(minioConfig)
@@ -30,7 +30,11 @@ function bucketOfOrigin(origin) {
   return origin.slice("minio://".length).split("/")[0]
 }
 
-let forbiddenTables = new Set(['users', 'credentials'])
+// PostgreSQL table of a file's bucket (utils/collections.bucketTable: never the API / Orion / users tables)
+function bucketTable(record) {
+  return bucketTableName(common.urlEncode(record?.s3?.bucket?.name || record?.bucketName))
+}
+
 
 // The documents of one file (same object name in the same bucket)
 function fileFilter(record) {
@@ -316,17 +320,7 @@ async function insertInDBs(newObject, record, align) {
 
   const settings = minioSettings()
   if (settings.toPostgres) {
-    let table = common.urlEncode(record?.s3?.bucket?.name || record.bucketName)
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table))
-      throw new Error('Invalid table name');
-    else if (forbiddenTables.has(table))
-      throw new Error('Forbidden table');
-    else if (table == "default")
-      table = "default_table"
-    else if (table == "status")
-      table = "status_table"
-    else if (table == "sources")
-      table = "sources_table"
+    const table = bucketTable(record)
 
     //let queryTable = createTable(table)
     client.query("SELECT * FROM " + table + " WHERE name = $1", [queryName], async (err, res) => {
@@ -496,17 +490,7 @@ async function deleteInDBs(record) {
   }
   const settings = minioSettings()
   let postgreFinished = !settings.toPostgres, logCounterFlag
-  let table = common.urlEncode(record?.s3?.bucket?.name || record.bucketName)
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table))
-    throw new Error('Invalid table name');
-  else if (forbiddenTables.has(table))
-    throw new Error('Forbidden table');
-  else if (table == "default")
-    table = "default_table"
-  else if (table == "status")
-    table = "status_table"
-  else if (table == "sources")
-    table = "sources_table"
+  const table = bucketTable(record)
   if (settings.toPostgres)
   client.query(`DELETE FROM ${table} WHERE name = $1`, [record?.s3?.object?.key || record.name], (err, res) => {
     if (err) {

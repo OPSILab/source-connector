@@ -70,4 +70,15 @@ function collectionModel(connector) {
     return { api: models.recordModel, orion: models.datapointModel, minio: models.minioModel }[connector](mongo)
 }
 
-module.exports = { CONNECTORS, DEFAULTS, ORIGIN_FIELD, collectionSettings, validateCollections, collectionModel }
+// PostgreSQL table of a MinIO bucket (one per bucket): its name, unless reserved - the tables of the other connectors
+// (collections.api.postgres, collections.orion.postgres), the ones of the users / credentials and a few more -, then
+// "<name>_table". Without this a bucket named like the API / Orion table would write in it, and deleting one of its
+// files would delete the rows with the same name there.
+function bucketTable(name) {
+    if (typeof name !== "string" || !SQL_NAME.test(name))
+        throw new Error("Invalid table name")
+    const reserved = new Set(["default", "status", "sources", "users", "credentials", ...["api", "orion"].map(c => collectionSettings(c).postgres)])
+    return reserved.has(name) ? name + "_table" : name
+}
+
+module.exports = { CONNECTORS, DEFAULTS, ORIGIN_FIELD, collectionSettings, validateCollections, collectionModel, bucketTable }
