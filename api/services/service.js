@@ -86,7 +86,7 @@ async function dmmGet(url) {
 async function sendFeedback(outputId) {
   for (let attempt = 1; ; attempt++)
     try {
-      return await dmmGet(withQuery(feedbackEndpoint(), { id: outputId, deleteAfterRead : "true" }))
+      return await dmmGet(withQuery(feedbackEndpoint(), { id: outputId }))
     } catch (error) {
       if (attempt >= 5)
         throw new Error(`Feedback for session ${outputId} not delivered: ${error.response?.data || error.message}`)
@@ -123,7 +123,8 @@ async function updateDimensions(dataToInsert) {
 // Reads a streamed mapping session (POST .../transform?streamMode=true answered { id }) part by part:
 // GET /output?id&index -> parts in order; an empty answer means "not written yet" or "no more parts", told apart
 // with GET /reportSync (completed: true once the session has ended). Each stored part is acknowledged with
-// GET /feedback?id, which lets the mapper write the next one (config.waitForFeedback).
+// GET /feedback?id, which lets the mapper write the next one (config.waitForFeedback) and empty the stored one
+// (config.deleteAckedParts). A part is therefore read whole until acknowledged, and never read again after.
 // Ends when the session is completed and no part is left; throws if it ended with an error, if the mapper does not
 // know the session (restarted / expired) or does not answer for dmmSessionLostTimeoutMs, or if nothing moves for
 // dmmNoProgressTimeoutMs.
@@ -145,7 +146,7 @@ async function readMappingSession(outputId, { downloadURL, id, sqlName }) {
     // a fresh read at every round: the previous part must never be taken for the next one
     let chunk
     try {
-      chunk = (await dmmGet(withQuery(sessionEndpoint(), { id: outputId, lastId, index: chunkIndex, deleteAfterRead : "true" }))).data
+      chunk = (await dmmGet(withQuery(sessionEndpoint(), { id: outputId, lastId, index: chunkIndex }))).data
     } catch (error) {
       logger.error(`Error fetching part ${chunkIndex} of session ${outputId}:`, error.response?.data || error.message)
     }
@@ -169,7 +170,7 @@ async function readMappingSession(outputId, { downloadURL, id, sqlName }) {
       break // ended, and still nothing at the last look: all parts have been read
     let status
     try {
-      status = (await dmmGet(withQuery(reportEndpoint(), { id: outputId, deleteAfterRead : "true" }))).data
+      status = (await dmmGet(withQuery(reportEndpoint(), { id: outputId }))).data
     } catch (error) {
       logger.error(`Error fetching the state of session ${outputId}:`, error.response?.data || error.message)
     }
@@ -315,7 +316,8 @@ async function executeRequest(req, res) {
                   disableAjv: true,
                   mappingReport: true,
                   newSdmxDecode: true,
-                  waitForFeedback: true // the mapper waits for GET /feedback after each part (see readMappingSession)
+                  waitForFeedback: true, // the mapper waits for GET /feedback after each part (see readMappingSession)
+                  deleteAckedParts: true // and empties the part on disk once acknowledged
                   //,
                   //mappingMode: "light"
                 },
@@ -347,7 +349,8 @@ async function executeRequest(req, res) {
                   disableAjv: true,
                   mappingReport: true,
                   newSdmxDecode: false,
-                  waitForFeedback: true
+                  waitForFeedback: true,
+                  deleteAckedParts: true
                 },
               },
               {
