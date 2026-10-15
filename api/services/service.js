@@ -4,6 +4,8 @@ const Dimensions = require("../models/Dimensions");
 const config = require("../../config");
 const minioWriter = require("../../inputConnectors/minioConnector");
 const axios = require("axios");
+const http = require("http");
+const https = require("https");
 const fs = require("fs");
 const { updateJWT } = require("../../utils/keycloak");
 let bearerToken;
@@ -70,23 +72,43 @@ function withQuery(base, params) {
   return base + (base.endsWith("?") || base.endsWith("&") ? "" : "&") + query
 }
 
+// No keep-alive towards the mapper. Node >= 19 reuses sockets by default, the mapper (Node 16) closes the idle ones
+// after 5 s, and between two parts the database insert easily lasts longer: the next request went out on a socket
+// being closed and failed with ECONNRESET. These are a few short requests per part, a new connection costs nothing.
+const dmmAgents = { httpAgent: new http.Agent({ keepAlive: false }), httpsAgent: new https.Agent({ keepAlive: false }) }
+const CONNECTION_RESETS = new Set(["ECONNRESET", "EPIPE", "ECONNABORTED"])
+
+// a reset connection is retried at once (twice at most): the requests below are all safe to repeat
+async function retryOnReset(request) {
+  for (let attempt = 1; ; attempt++)
+    try {
+      return await request()
+    } catch (error) {
+      if (attempt >= 3 || !CONNECTION_RESETS.has(error.code))
+        throw error
+      logger.debug(`Connection to the mapper reset (${error.code}), retrying`)
+    }
+}
+
 // GET towards the Data Model Mapper; on 403 the token is refreshed once (a long mapping outlives it)
 async function dmmGet(url) {
+  const get = () => retryOnReset(() => axios.get(url, { headers: { Authorization: `Bearer ${bearerToken}` }, ...dmmAgents }))
   try {
-    return await axios.get(url, { headers: { Authorization: `Bearer ${bearerToken}` } })
+    return await get()
   } catch (error) {
     if (error.response?.status != 403)
       throw error
     logger.info("Token refused by the Data Model Mapper, refreshing it")
     bearerToken = await updateJWT(true)
-    return await axios.get(url, { headers: { Authorization: `Bearer ${bearerToken}` } })
+    return await get()
   }
 }
 
-async function sendFeedback(outputId) {
+// part = number of the part stored (index + 1, as the mapper names its files): repeating it is harmless
+async function sendFeedback(outputId, part) {
   for (let attempt = 1; ; attempt++)
     try {
-      return await dmmGet(withQuery(feedbackEndpoint(), { id: outputId }))
+      return await dmmGet(withQuery(feedbackEndpoint(), { id: outputId, part }))
     } catch (error) {
       if (attempt >= 5)
         throw new Error(`Feedback for session ${outputId} not delivered: ${error.response?.data || error.message}`)
@@ -161,7 +183,7 @@ async function readMappingSession(outputId, { downloadURL, id, sqlName }) {
       await writer.add(dataToInsert)
       lastId = chunk[chunk.length - 1]?._id
       await updateDimensions(dataToInsert)
-      await sendFeedback(outputId)
+      await sendFeedback(outputId, chunkIndex + 1)
       chunkIndex++
       lastAnswer = lastProgress = Date.now()
       continue
