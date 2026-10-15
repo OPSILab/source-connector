@@ -34,6 +34,10 @@ module.exports = {
   parseEndpoint: "http://localhost:5500/api/parse",
   getMapEndpoint: "http://localhost:5500/api/map",
   sessionEndpoint: "http://localhost:5500/api/output?",
+  reportEndpoint: "http://localhost:5500/api/reportSync", // state of a streamed mapping session (completed / running)
+  feedbackEndpoint: "http://localhost:5500/api/feedback", // tells the mapper a part has been stored
+  dmmSessionLostTimeoutMs: 300000, // the mapper does not know the session (or does not answer) for this long -> give up
+  dmmNoProgressTimeoutMs: 1800000, // the session is alive but nothing moves for this long -> give up
   mapID: "",
   orion: {
     protocol: "http",
