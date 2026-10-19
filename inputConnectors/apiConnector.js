@@ -17,6 +17,8 @@ function setDate(currentDate, format) {
         return currentDate.toISOString().split("T")[0]
     if (format === "millis")
         return Math.floor(currentDate.getTime())
+    if (format == "RFC 3339")
+        return currentDate.toISOString()
 }
 
 // The API collection (collections.api.mongo, "sources"); its records and PostgreSQL rows as configured
@@ -64,8 +66,8 @@ async function pollAPI() {
                                 //headers[header] = api.headers[header].value
                                 continue
                             }
-                            logger.info(api.headers[header], api.headers[header].authProfile)
-                            const response = await getToken(api.headers[header].authUrl.value, api.headers[header].authUrl.requestType, api.headers[header].credentials, api.headers[header].authProfile)
+                            logger.info(api.headers[header])
+                            const response = await getToken(api.headers[header].authUrl.value, api.headers[header].authUrl.requestType, api.headers[header].credentials, api.headers[header].authProfile, api.headers[header].body, api.headers[header].headers)
                             logger.info("Token got", response?.data || "No response")
                             api.headers[header].value = "Bearer " + response.data.access_token
                             //headers[header] = api.headers[header].value
@@ -142,6 +144,10 @@ async function pollAPI() {
                     let response
                     do {
                         let urlWithParams = api.url + (api.url.includes("?") ? "&" : "?") + `${api.pagination.limitParam}=${api.pagination.limit}&${api.pagination.offsetParam}=${offset}`
+                        logger.info(`Polling ${api.name} API with offset ${offset}...`)
+                        logger.info("api ", urlWithParams, "called with ", {
+                            headers
+                        })
                         response = await axios.get(urlWithParams, { headers })
                         logger.info(`Data from ${api.name} API:`, response.data.length)
                         if (!Array.isArray(response.data))
@@ -258,7 +264,8 @@ async function pollAPI() {
                     logger.error("Status:", error.response.status)
                     logger.error("Data:", error.response.data)
                     logger.error("Headers:", error.request.headers)
-                    //logger.error("Request:", error.request)
+                    //logger.error("Request keys:", Object.keys(error.request))
+                    //logger.error("Request: ",error.request)
                 }
                 else
                     logger.error(error)
@@ -277,10 +284,14 @@ setBasicAuthHeader = (credentials) => {
     return "Basic " + Buffer.from(credentials.username + ":" + credentials.password).toString('base64');
 }
 
-async function getToken(url, requestType, credentials, authProfile) {
+async function getToken(url, requestType, credentials, authProfile, body, headers) {
     if (authProfile === "basic") {
         const authorization = setBasicAuthHeader(credentials)
-        return await axios[requestType.toLowerCase()](url, undefined, {
+        headers.Authorization = authorization
+        logger.debug(requestType.toLowerCase(), url, {
+            headers
+        })
+        return await axios[requestType.toLowerCase()](url, body, {
             headers: {
                 'Authorization': authorization
             }
