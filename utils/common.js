@@ -3,6 +3,7 @@ const log = logger.info
 const axios = require("axios")
 const config = require("../config")
 const Entity = require("../api/models/Entity")
+const distributionCheck = require("./distributionCheck")
 
 function objectCheck(objs) {
   for (let obj of objs)
@@ -103,9 +104,14 @@ async function getFromOrion() {
   let orionUrl = config.orion.orionBaseUrl + "/ngsi-ld/v1/entities?type=" + config.orion.subscribeType + "&limit=1000&count=true"
   let entities = await axios.get(orionUrl)
   collectedEntities = collectedEntities.concat(entities.data)
-  let totalEntities = entities.headers["NGSILD-Results-Count"]
-  while (collectedEntities.length < totalEntities)
-    collectedEntities = collectedEntities.concat((await axios.get(orionUrl + "&offset=" + collectedEntities.length)).data)
+  // the http headers are lower case ("NGSILD-Results-Count" was always undefined: only the first 1000 were read)
+  let totalEntities = Number(entities.headers["ngsild-results-count"]) || 0
+  while (collectedEntities.length < totalEntities) {
+    const page = (await axios.get(orionUrl + "&offset=" + collectedEntities.length)).data
+    if (!Array.isArray(page) || !page.length)
+      break
+    collectedEntities = collectedEntities.concat(page)
+  }
   return collectedEntities
 }
 
@@ -134,45 +140,14 @@ function fastAndPartialOrionizeEntity(ent, recursive) {
   return parsedEnt
 }
 
-function checkField(ent, existingEntity, field) {
-  const check = (
-    !existingEntity
-    ||
-    (
-      existingEntity?.[field]?.value?.["@value"] &&
-      ent?.[field]?.value?.["@value"] &&
-      existingEntity[field].value["@value"] != ent[field].value["@value"]
-    )
-    ||
-    (
-      existingEntity?.[field]?.value && !existingEntity?.[field]?.value?.["@value"] &&
-      ent?.[field]?.value && !ent?.[field]?.value?.["@value"] &&
-      typeof existingEntity[field].value != "object" && typeof ent[field].value != "object" && 
-      !Array.isArray(existingEntity[field].value) && !Array.isArray(ent[field].value) &&
-      existingEntity[field].value != ent[field].value
-    )
-    ||
-    (
-      existingEntity?.[field]?.value && (typeof existingEntity[field].value == "object" || Array.isArray(existingEntity[field].value)) &&
-      ent?.[field]?.value && (typeof ent[field].value == "object" || Array.isArray(ent[field].value)) &&
-      JSON.stringify(existingEntity[field].value) != JSON.stringify(ent[field].value)
-    )
-    ||
-    !existingEntity?.[field]?.value && ent?.[field]?.value
-  )
-  logger.debug("check " + field + ": " + check)
-  return check
-}
-
+// modifiedDate / byteSize / checksum compared on their plain values (distributionCheck.plainValue): the entity and the
+// stored one may be wrapped differently (Orion, JSON-LD @value, fastAndPartialOrionizeEntity, mongoose document).
+// The comparison used before (checkField) missed the byteSize changes when only one side was wrapped and always saw a
+// modifiedDate change (two objects compared with !=).
 function checkMustUpdateDistributionDcatAp(ent, existingEntity) {
-  console.log(checkField(ent, existingEntity, "modifiedDate"))
-  console.log(checkField(ent, existingEntity, "byteSize"))
-  console.log(checkField(ent, existingEntity, "checksum"))
-  return (
-    checkField(ent, existingEntity, "modifiedDate") ||
-    checkField(ent, existingEntity, "byteSize") ||
-    checkField(ent, existingEntity, "checksum")
-  )
+  const changed = distributionCheck.changedFields(ent, existingEntity)
+  logger.debug(`Entity ${ent?.id || ent?.entityId}: ${existingEntity ? (changed.length ? "changed " + changed.join(", ") : "unchanged") : "not stored"}`)
+  return changed.length > 0
 }
 
 module.exports = {

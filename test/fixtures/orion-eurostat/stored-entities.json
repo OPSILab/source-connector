@@ -1,0 +1,2396 @@
+[
+ {
+  "_id": "6ac7b14dd3e68ff7e648053f",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "en": "Download dataset in SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/bd_hgnace_r?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "6134040"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/bd_hgnace_r?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:8d283f78-c325-4164-8c5e-ab5b25d63493"
+ },
+ {
+  "_id": "6ac7b324d3e68ff7e65c42ce",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/bd_salge1_nace_r?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "5693320"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/bd_salge1_nace_r?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:2b64592b-88cb-463f-adbe-6f60a88f03bc"
+ },
+ {
+  "_id": "6ac7b3cfd3e68ff7e6624aed",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "en": "Download dataset in SDMX 2.1 format",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/bd_salge1_size_r?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "1733519"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/bd_salge1_size_r?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:47f0dcbd-efb7-462b-a1ea-145cea9ad1c9"
+ },
+ {
+  "_id": "6ad105efdb21b877e8ce45c1",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "en": "Download dataset in SDMX 2.1 format",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/cens_21cobhs_r3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "38729919"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/cens_21cobhs_r3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:a1b0fd09-264c-465f-a1fc-2556fff18de5"
+ },
+ {
+  "_id": "6ad144bfdb21b877e8affcc5",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "en": "Download dataset in SDMX 2.1 format",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/cens_21ctz_r3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "116411638"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/cens_21ctz_r3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:50057bb8-472f-4d23-a913-872859b80c1b"
+ },
+ {
+  "_id": "6ac7cb27d3e68ff7e68dc1d3",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "en": "Download dataset in SDMX 2.1 format",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/cens_21lha_r3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "2243476"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/cens_21lha_r3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:5161eb92-5ee1-42a5-bbb0-f73b862d8ba0"
+ },
+ {
+  "_id": "6ac8c0cddc1ac92898871dbf",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/cens_21m_r3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "1304021"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/cens_21m_r3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:4980cbc4-f320-4ee9-8e9a-d7fa0c0f7e14"
+ },
+ {
+  "_id": "6ac7cbb6d3e68ff7e690f14a",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "en": "Download dataset in SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_d3dens?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "245010"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_d3dens?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:7bfb2bd0-731b-453e-b0c7-22595628976b"
+ },
+ {
+  "_id": "6ac7cc5cd3e68ff7e6987aa5",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "en": "Download dataset in SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_gind3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "1947910"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_gind3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:17b6fbf1-eed6-42d8-be94-d09199df5aac"
+ },
+ {
+  "_id": "6ac7cd43d3e68ff7e6a3c603",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_pjanaggr3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "3282256"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_pjanaggr3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:0d3e1d51-6522-478c-bf4f-c1c94a4e0d16"
+ },
+ {
+  "_id": "6ac7cf68d3e68ff7e6bb5ce4",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_pjangrp3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "7201292"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_pjangrp3?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:edfb600e-2401-442a-922d-7562398981e7"
+ },
+ {
+  "_id": "6ac7cfa2d3e68ff7e6bd7e7e",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/edat_lfse_22?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "479716"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/edat_lfse_22?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:a1a1ce68-311b-45e4-bef2-16a5489f50d8"
+ },
+ {
+  "_id": "6ac7cfaad3e68ff7e6bdc850",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/educ_uoe_enra14?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "65397"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/educ_uoe_enra14?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:3ba4924e-ff3a-4f04-bae6-df5eef557719"
+ },
+ {
+  "_id": "6ac7cfe0d3e68ff7e6bf7a25",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "en": "Download dataset in SDMX 2.1 format",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/educ_uoe_enrt06?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "397984"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/educ_uoe_enrt06?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:46225260-9d04-4a84-9291-a711d79d220b"
+ },
+ {
+  "_id": "6ad16deddb21b877e81d5e75",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/ef_lus_allcrops?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "55442646"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/ef_lus_allcrops?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:ee622d12-7d62-4ca8-82da-f1638cdbe25c"
+ },
+ {
+  "_id": "6ac7ded4d3e68ff7e6c01df2",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "en": "Download dataset in SDMX 2.1 format",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/env_wasfac?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "151479"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/env_wasfac?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:16a463da-7e29-462f-8cb0-0191525e0f4f"
+ },
+ {
+  "_id": "6ad17ecddb21b877e8cdc299",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/hlth_co_disch1t?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": ""
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/hlth_co_disch1t?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:c1a4c9ed-ad93-4737-87ab-f4ff72c0d15b"
+ },
+ {
+  "_id": "6ac7e56cd3e68ff7e6c12d76",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "en": "Download dataset in SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_blt12_i?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "309854"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_blt12_i?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:8b8566b2-bbc9-4459-afa0-5d8260722dcc"
+ },
+ {
+  "_id": "6ac7e5a6d3e68ff7e6c33d9d",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_ci_it_en2?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "678792"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_ci_it_en2?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:3ea6d472-1e2a-4b9f-aa5a-17e4aa1eadae"
+ },
+ {
+  "_id": "6ac7e5afd3e68ff7e6c37ff6",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_gov_i?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "79367"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_gov_i?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:9e3d6271-2f0f-4c34-95e7-ddc27ba2165d"
+ },
+ {
+  "_id": "6ac7e5b5d3e68ff7e6c39724",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "en": "Download dataset in SDMX 2.1 format",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_iacc_h?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "26555"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_iacc_h?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:d837cf49-2d1e-484f-9c8b-8b5575d6a493"
+ },
+ {
+  "_id": "6ac7e5c9d3e68ff7e6c49c26",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "en": "Download dataset in SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_iuse_i?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "293792"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/isoc_r_iuse_i?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:2bf67067-5d06-4c26-945f-ac48f0fa889a"
+ },
+ {
+  "_id": "6ac7e776d3e68ff7e6db6bfa",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "en": "Download dataset in SDMX 2.1 format",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3empers?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "5601202"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3empers?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:890f69f9-2218-4b34-890c-9bde20508ce9"
+ },
+ {
+  "_id": "6ac7e7c2d3e68ff7e6dff8cd",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "en": "Download dataset in SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3gdp?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "1320246"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3gdp?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:3e5d07f2-2170-41b6-9800-373fbe3f2fa6"
+ },
+ {
+  "_id": "6ac7e955d3e68ff7e6f636c2",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3gva?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "6601434"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3gva?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:21943857-9828-4cb0-829b-b0174fa484ef"
+ },
+ {
+  "_id": "6ac7eb44d3e68ff7e60cb432",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3nlp?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "392267"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3nlp?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:5c8b7982-1277-42b7-b94d-ee3f6433c91a"
+ },
+ {
+  "_id": "6ac7e7f4d3e68ff7e6e28eaa",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nrg_chddr2_a?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "805708"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nrg_chddr2_a?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:f5c37a2e-b863-4484-a0d1-12c5da83c9ce"
+ },
+ {
+  "_id": "6ac7e7c5d3e68ff7e6e003c1",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "en": "Download dataset in SDMX 2.1 format",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/pat_ep_tot?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "13970"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/pat_ep_tot?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:a247cc84-9bf6-40ed-97ce-eea9709a7f52"
+ },
+ {
+  "_id": "6ac7e9cad3e68ff7e6fb4fd2",
+  "id": "urn:ngsi-ld:DistributionDCAT-AP:id:c03a7cc1-204b-4c72-9f31-288c4265fa5f",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "en": "Download dataset in SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/rd_e_gerdreg?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "1659321"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/rd_e_gerdreg?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:c03a7cc1-204b-4c72-9f31-288c4265fa5f"
+ },
+ {
+  "_id": "6ac7ea62d3e68ff7e6025795",
+  "id": "urn:ngsi-ld:DistributionDCAT-AP:id:14daf62d-9806-43d4-a0d2-bc07eafc721c",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "en": "Download dataset in SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/road_go_na_rl3g?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "1706505"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/road_go_na_rl3g?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:14daf62d-9806-43d4-a0d2-bc07eafc721c"
+ },
+ {
+  "_id": "6ac7eb01d3e68ff7e6098b40",
+  "id": "urn:ngsi-ld:DistributionDCAT-AP:id:420d801f-cae3-4a7b-975d-ac772357e69b",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "en": "Download dataset in SDMX 2.1 format"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/road_go_na_ru3g?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "1741729"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/road_go_na_ru3g?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:420d801f-cae3-4a7b-975d-ac772357e69b"
+ },
+ {
+  "_id": "6ac7eb07d3e68ff7e609c85b",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "en": "Download dataset in SDMX 2.1 format",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/tran_r_elvehst?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "53451"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/tran_r_elvehst?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:64b8fe2a-3240-436f-b483-b7cbf235cfbb"
+ },
+ {
+  "_id": "6ac7eb22d3e68ff7e60ae498",
+  "type": "DistributionDCAT-AP",
+  "description": {
+   "type": "Property",
+   "value": ""
+  },
+  "title": {
+   "type": "Property",
+   "value": {
+    "fr": "T\ufffdl\ufffdcharger le jeu de donn\ufffdes au format SDMX 2.1",
+    "uk": "??????????? ????? ????? ? ??????? SDMX 2.1",
+    "it": "Scarica il set di dati in formato SDMX 2.1",
+    "fi": "Lataa datajoukko SDMX 2.1 -muodossa",
+    "et": "Andmestiku allalaadimine SDMX 2.1 vormingus",
+    "pt": "Descarregar conjunto de dados no formato SDMX 2.1",
+    "mt": "Ni??el is-sett tad-data fil-format SDMX 2.1",
+    "lt": "Atsisi?skite duomen? rinkin? SDMX 2.1 formatu",
+    "da": "Download datas\ufffdt i SDMX 2.1 format",
+    "pl": "Pobierz zestaw danych w formacie SDMX 2.1",
+    "en": "Download dataset in SDMX 2.1 format",
+    "sl": "Prenos nabora podatkov v formatu SDMX 2.1",
+    "lv": "Lejupiel?d?jiet datu kopu SDMX 2.1 form?t?",
+    "hr": "Preuzimanje skupa podataka u formatu SDMX 2.1",
+    "de": "Datensatz im SDMX 2.1 Format herunterladen",
+    "sv": "H\ufffdmta dataset i SDMX 2.1-format",
+    "hu": "Adatk\ufffdszlet let\ufffdlt\ufffdse SDMX 2.1 form\ufffdtumban",
+    "ga": "\ufffdosl\ufffdd\ufffdil tacar sonra\ufffd i bhform\ufffdid SDMX 2.1",
+    "nl": "Download dataset in SDMX 2.1 formaat",
+    "bg": "????????? ?? ????? ?? ????? ??? ?????? SDMX 2.1",
+    "es": "Descargar conjunto de datos en formato SDMX 2.1",
+    "ro": "Desc?rca?i setul de date \ufffdn format SDMX 2.1",
+    "el": "??????????? ??????? ????????? ?? ????????? SDMX 2.1",
+    "cs": "St\ufffdhnout datov\ufffd soubor ve form\ufffdtu SDMX 2.1",
+    "sk": "Stiahnu? d\ufffdtov\ufffd s\ufffdbor vo form\ufffdte SDMX 2.1"
+   }
+  },
+  "accessUrl": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/tran_r_rapa?format=sdmx_2.1_structured&compressed=true"
+  },
+  "byteSize": {
+   "type": "Property",
+   "value": "314662"
+  },
+  "checksum": {
+   "type": "Property",
+   "value": ""
+  },
+  "downloadURL": {
+   "type": "Property",
+   "value": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/tran_r_rapa?format=sdmx_2.1_structured&compressed=true"
+  },
+  "language": {
+   "type": "Property",
+   "value": []
+  },
+  "license": {
+   "type": "Property",
+   "value": ""
+  },
+  "mediaType": {
+   "type": "Property",
+   "value": "application/xml"
+  },
+  "rights": {
+   "type": "Property",
+   "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+  },
+  "format": {
+   "type": "Property",
+   "value": "XML"
+  },
+  "status": {
+   "type": "Property",
+   "value": ""
+  },
+  "entityId": "urn:ngsi-ld:DistributionDCAT-AP:id:b90aff90-455b-4c03-881d-780185d8d033"
+ }
+]
