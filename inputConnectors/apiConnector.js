@@ -88,6 +88,7 @@ async function pollAPI() {
                 if (api.headers?.Authorization && api.headers.Authorization.type === "basic" && api.headers.Authorization.alwaysSend)
                     headers.Authorization = setBasicAuthHeader(api.headers.Authorization.credentials)
 
+                logger.debug(api)
                 if (api.batch) {
                     logger.info(`Polling ${api.name} API for batch values from ${api.batch.from}...`)
                     const batchResponse = await axios.get(api.batch.from, {
@@ -180,6 +181,7 @@ async function pollAPI() {
 
                 }
                 else if (api.incremental) {
+                    logger.info(`Polling ${api.name} API for incremental records...`)
                     const collector = createCollector(api.url, "api")
                     const lastRecord = collectionSettings("api").toMongo ? await Source().findOne({ source: api.url }).sort({ datePolled: -1 }).lean() : null
                     const currentDate = new Date()
@@ -199,6 +201,10 @@ async function pollAPI() {
                         else
                             startDate.setDate(startDate.getDate() - 1)
                         queryParams[api.incrementalParams.startDateParam] = setDate(startDate, api.incrementalParams.startDateFormat)
+                    }
+                    else if (api.incrementalParams.startDateValue) {
+                        logger.info(`No records found for ${api.name} API, polling from configured start date...`)
+                        queryParams[api.incrementalParams.startDateParam] = api.incrementalParams.startDateValue
                     }
                     else {
                         logger.info(`No records found for ${api.name} API, polling all records...`)
@@ -230,7 +236,7 @@ async function pollAPI() {
                     const response = api.method?.toLowerCase() === "post" ? await axios.post(api.url, api.body, { headers }) : await axios.get(api.url, {
                         headers
                     })
-                    logger.info("api ", api.url, "called awith ", {
+                    logger.info("api ", api.url, "called with ", {
                         headers
                     }, { response: response?.data?.length || response.data || "no response" })
                     logger.info(`Data from ${api.name} API:`, response.data.length)
