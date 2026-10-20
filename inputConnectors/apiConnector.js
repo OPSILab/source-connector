@@ -131,52 +131,83 @@ async function pollAPI() {
                     }
                 }
                 else if (api.pagination) {
-                    /*api.url = api.url
-                        .replace("{offsetParam}", api.pagination.offsetParam)
-                        .replace("{limitParam}", api.pagination.limitParam)
-                        .replace("{offset}", api.pagination.offset || 0)
-                        .replace("{limit}", api.pagination.limit)*/
                     const collector = createCollector(api.url, "api")
-                    // local offset: the config object is no longer mutated, every poll restarts from the configured offset
                     let offset = api.pagination.offset || 0
-                    // upsert: old records are removed once, before the first page (not at every page)
                     if (config.apiConnectorConfig.upsertRecords)
                         await clearOrigin(api.url, "api")
                     let response
-                    do {
-                        let urlWithParams = api.url + (api.url.includes("?") ? "&" : "?") + `${api.pagination.limitParam}=${api.pagination.limit}&${api.pagination.offsetParam}=${offset}`
-                        logger.info(`Polling ${api.name} API with offset ${offset}...`)
-                        logger.info("api ", urlWithParams, "called with ", {
-                            headers
-                        })
-                        response = await axios.get(urlWithParams, { headers })
-                        logger.info(`Data from ${api.name} API:`, response.data.length)
-                        if (!Array.isArray(response.data))
-                            response.data = [response.data]
-                        if (config.apiConnectorConfig.upsertRecords) {
-                            const insertingData = response.data.map(item => makeItem(item, api.url))
-                            await storeRecords(insertingData, api.url, { collector, logName: api.name })
+                    let mustPull = true
+                    const currentDate = new Date()
+                    let queryParams 
+                    if (api.incremental) {
+                        logger.info(`Polling ${api.name} API for incremental records...`)
+                        const lastRecord = collectionSettings("api").toMongo ? await Source().findOne({ source: api.url }).sort({ datePolled: -1 }).lean() : null
+                        //const currentDate = new Date()
+                        let endDate = new Date()
+                        if (api.incrementalParams.endDateLogic != "inclusive")
+                            endDate.setDate(endDate.getDate() + 1)
+                        queryParams = { [api.incrementalParams.endDateParam]: setDate(endDate, api.incrementalParams.endDateFormat) }//currentDate.toISOString().split("T")[0] }
+                        if (api.queryParams)
+                            queryParams = { ...queryParams, ...api.queryParams }
+                        let lastRecordDate
+                        if (lastRecord) {
+                            lastRecordDate = new Date(lastRecord["datePolled"])
+                            lastRecordDate.setDate(lastRecordDate.getDate())
+                            let startDate = new Date()
+                            if (api.incrementalParams.startDateLogic != "inclusive")
+                                startDate.setDate(startDate.getDate() - 2)
+                            else
+                                startDate.setDate(startDate.getDate() - 1)
+                            queryParams[api.incrementalParams.startDateParam] = setDate(startDate, api.incrementalParams.startDateFormat)
+                        }
+                        else if (api.incrementalParams.startDateValue) {
+                            logger.info(`No records found for ${api.name} API, polling from configured start date...`)
+                            queryParams[api.incrementalParams.startDateParam] = api.incrementalParams.startDateValue
                         }
                         else {
-                            const existingSources = await storedRecords(api.url)
-                            const newSources = response.data.map(item => makeItem(item, api.url))
-                            const sourcesToInsert = newSources.filter(newItem => !existingSources.some(existingItem => dbHasSameData(existingItem, newItem)))
-                            if (sourcesToInsert.length > 0) {
-                                await storeRecords(sourcesToInsert, api.url, { collector, logName: api.name })
-                                logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API`)
-                            }
-                            else
-                                logger.info(`No new records to insert for ${api.name} API`)
-
+                            logger.info(`No records found for ${api.name} API, polling all records...`)
                         }
-                        offset += api.pagination.limit
-                        /*api.url.split("?")[1].split("&").forEach(param => {
-                            const [key, value] = param.split("=")
-                            if (key === api.pagination.offsetParam)
-                                api.url = api.url.replace(`${key}=${value}`, `${key}=${parseInt(value) + api.pagination.limit}`)
-                        })*/
+                        logger.debug(lastRecordDate?.toISOString().split("T")[0], " ", currentDate.toISOString().split("T")[0])
+                        if (lastRecord && lastRecordDate && lastRecordDate.toISOString().split("T")[0] === currentDate.toISOString().split("T")[0]) {
+                            logger.info(`No new records to poll for ${api.name} API (last record date: ${lastRecordDate.toISOString()})`)
+                            mustPull = false
+                        }
+                    }
+                    if (mustPull)
+                        do {
+                            let urlWithParams = api.url + (api.url.includes("?") ? "&" : "?") + `${api.pagination.limitParam}=${api.pagination.limit}&${api.pagination.offsetParam}=${offset}`
+                            logger.info(`Polling ${api.name} API with offset ${offset}...`)
+                            logger.info("api ", urlWithParams, "called with ", {
+                                headers
+                            })
+                            response = queryParams ? await axios.get(urlWithParams, { headers, params: queryParams }) : await axios.get(urlWithParams, { headers })
+                            logger.info(`Data from ${api.name} API:`, response.data.length)
+                            if (!Array.isArray(response.data))
+                                response.data = [response.data]
+                            if (config.apiConnectorConfig.upsertRecords) {
+                                const insertingData = response.data.map(item => makeItem(item, api.url))
+                                await storeRecords(insertingData, api.url, { collector, logName: api.name })
+                            }
+                            else {
+                                const existingSources = api.incremental ? [] : await storedRecords(api.url)
+                                const newSources = response.data.map(item => makeItem((api.incremental ? { ...item, datePolled: currentDate } : item), api.url))
+                                const sourcesToInsert = api.incremental ? newSources : newSources.filter(newItem => !existingSources.some(existingItem => dbHasSameData(existingItem, newItem)))
+                                if (sourcesToInsert.length > 0) {
+                                    await storeRecords(sourcesToInsert, api.url, { collector, logName: api.name })
+                                    logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API`)
+                                }
+                                else
+                                    logger.info(`No new records to insert for ${api.name} API`)
 
-                    } while (api.pagination.condition(response));
+                            }
+                            offset += api.pagination.limit
+                            /*api.url.split("?")[1].split("&").forEach(param => {
+                                const [key, value] = param.split("=")
+                                if (key === api.pagination.offsetParam)
+                                    api.url = api.url.replace(`${key}=${value}`, `${key}=${parseInt(value) + api.pagination.limit}`)
+                            })*/
+
+                        } while (api.pagination.condition(response));
                     await collector.flush()
 
                 }
