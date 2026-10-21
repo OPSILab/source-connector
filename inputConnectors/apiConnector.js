@@ -21,6 +21,7 @@ function setDate(currentDate, format) {
         return currentDate.toISOString()
 }
 function setDateForIncremental(lastPollDateIn, currentDate, format, pollDelay, startLogic, endLogic, verse) {
+    startLogic = startLogic || "inclusive"
     let lastPollDate = new Date(lastPollDateIn)
     const DAY = 1000 * 60 * 60 * 24
     if ((currentDate.getTime() < lastPollDate.getTime()) || (currentDate.getTime() - lastPollDate.getTime() < DAY) && format == "YYYY-MM-DD")
@@ -31,12 +32,12 @@ function setDateForIncremental(lastPollDateIn, currentDate, format, pollDelay, s
             delay = 0//lastPollDate|currentDate - 1000 * 60 * 60 * 24
         else if (verse === "start")
             delay = 0//lastPollDate|currentDate-1
-        else if (verse === "end" && format == "YYYY-MM-DD") 
+        else if (verse === "end" && format == "YYYY-MM-DD")
             delay = - DAY
         else if (verse === "end")
             delay = - 1
     }
-    if (startLogic === "inclusive" && endLogic === "exclusive") {
+    else if (startLogic === "inclusive" && (!endLogic || endLogic === "exclusive")) {
         if (verse === "start" && format == "YYYY-MM-DD")
             delay = 0//lastPollDate|currentDate - 1000 * 60 * 60 * 24
         else if (verse === "start")
@@ -46,7 +47,7 @@ function setDateForIncremental(lastPollDateIn, currentDate, format, pollDelay, s
         else if (verse === "end")
             delay = 0
     }
-    if (startLogic === "exclusive" && endLogic === "inclusive") {
+    else if (startLogic === "exclusive" && endLogic === "inclusive") {
         if (verse === "start" && format == "YYYY-MM-DD")
             delay = - DAY//lastPollDate|currentDate - 1000 * 60 * 60 * 24
         else if (verse === "start")
@@ -56,7 +57,7 @@ function setDateForIncremental(lastPollDateIn, currentDate, format, pollDelay, s
         else if (verse === "end")
             delay = - 1
     }
-    if (startLogic === "exclusive" && endLogic === "exclusive") {
+    else if (startLogic === "exclusive" && (!endLogic || endLogic === "exclusive")) {
         if (verse === "start" && format == "YYYY-MM-DD")
             delay = - DAY//lastPollDate|currentDate - 1000 * 60 * 60 * 24
         else if (verse === "start")
@@ -191,7 +192,7 @@ async function pollAPI() {
                     let response
                     let mustPull = true
                     const currentDate = new Date()
-                    let queryParams
+                    let queryParams = { ...api.queryParams }
                     if (api.incremental) {
                         logger.info(`Polling ${api.name} API for incremental records...`)
                         const lastRecord = collectionSettings("api").toMongo ? await Source().findOne({ source: api.url }).sort({ datePolled: -1 }).lean() : null
@@ -201,14 +202,14 @@ async function pollAPI() {
                         //    endDate.setTime(endDate.getTime() - 1000 * 60 * 60 * 24 - 1)
                         //queryParams = { [api.incrementalParams.endDateParam]: setDate(endDate, api.incrementalParams.endDateFormat) }//currentDate.toISOString().split("T")[0] }
                         let lastRecordDate
-                        if (lastRecord)
-                            queryParams = { ...api.queryParams }
-                        else {
-                            lastRecordDate = new Date()
-                            lastRecordDate.setTime(currentDate.getTime() - 1000 * 60 * 60 * 24)
-                            queryParams = { [api.incrementalParams.endDateParam]: setDateForIncremental(lastRecordDate, endDate, api.incrementalParams.endDateFormat, (Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0), api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end") }
-                            if (api.queryParams)
-                                queryParams = { ...queryParams, ...api.queryParams }
+                        if (!lastRecord) {
+                            if (api.incrementalParams.endDateParam) {
+                                lastRecordDate = new Date()
+                                lastRecordDate.setTime(currentDate.getTime() - 1000 * 60 * 60 * 24)
+                                queryParams = { [api.incrementalParams.endDateParam]: setDateForIncremental(lastRecordDate, endDate, api.incrementalParams.endDateFormat, (Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0), api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end") }
+                                if (api.queryParams)
+                                    queryParams = { ...queryParams, ...api.queryParams }
+                            }
                         }
                         if (lastRecord) {
                             let pollDelay = Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0
@@ -220,10 +221,12 @@ async function pollAPI() {
                             //else
                             //    startDate.setTime(startDate.getTime() - pollDelay)
                             queryParams[api.incrementalParams.startDateParam] = startDate//setDate(startDate, api.incrementalParams.startDateFormat)
-                            let endDate = new Date()
-                            //if (api.incrementalParams.endDateLogic == "inclusive")
-                            endDate = setDateForIncremental(lastRecordDate, currentDate, api.incrementalParams.endDateFormat, pollDelay, api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end")//.setTime(endDate.getTime() - 1000 * 60 * 60 * 24)
-                            queryParams[api.incrementalParams.endDateParam] = endDate//setDate(endDate, api.incrementalParams.endDateFormat)
+                            if (api.incrementalParams.endDateParam) {
+                                let endDate = new Date()
+                                //if (api.incrementalParams.endDateLogic == "inclusive")
+                                endDate = setDateForIncremental(lastRecordDate, currentDate, api.incrementalParams.endDateFormat, pollDelay, api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end")//.setTime(endDate.getTime() - 1000 * 60 * 60 * 24)
+                                queryParams[api.incrementalParams.endDateParam] = endDate
+                            }//setDate(endDate, api.incrementalParams.endDateFormat)
                         }
                         else if (api.incrementalParams.startDateValue) {
                             logger.info(`No records found for ${api.name} API, polling from configured start date...`)
@@ -291,20 +294,20 @@ async function pollAPI() {
                     const collector = createCollector(api.url, "api")
                     const lastRecord = collectionSettings("api").toMongo ? await Source().findOne({ source: api.url }).sort({ datePolled: -1 }).lean() : null
                     const currentDate = new Date()
-                    let queryParams
+                    let queryParams = { ...api.queryParams }
                     let endDate = new Date()
                     //if (api.incrementalParams.endDateLogic == "inclusive")
                     //    endDate.setTime(endDate.getTime() - 1000 * 60 * 60 * 24 - 1)
                     //queryParams = { [api.incrementalParams.endDateParam]: setDate(endDate, api.incrementalParams.endDateFormat) }//currentDate.toISOString().split("T")[0] }
                     let lastRecordDate
-                    if (lastRecord)
-                        queryParams = { ...api.queryParams }
-                    else {
-                        lastRecordDate = new Date()
-                        lastRecordDate.setTime(currentDate.getTime() - 1000 * 60 * 60 * 24)
-                        queryParams = { [api.incrementalParams.endDateParam]: setDateForIncremental(lastRecordDate, endDate, api.incrementalParams.endDateFormat, (Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0), api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end") }
-                        if (api.queryParams)
-                            queryParams = { ...queryParams, ...api.queryParams }
+                    if (!lastRecord) {
+                        if (api.incrementalParams.endDateParam) {
+                            lastRecordDate = new Date()
+                            lastRecordDate.setTime(currentDate.getTime() - 1000 * 60 * 60 * 24)
+                            queryParams = { [api.incrementalParams.endDateParam]: setDateForIncremental(lastRecordDate, endDate, api.incrementalParams.endDateFormat, (Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0), api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end") }
+                            if (api.queryParams)
+                                queryParams = { ...queryParams, ...api.queryParams }
+                        }
                     }
                     if (lastRecord) {
                         let pollDelay = Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0
@@ -316,10 +319,12 @@ async function pollAPI() {
                         //else
                         //    startDate.setTime(startDate.getTime() - pollDelay)
                         queryParams[api.incrementalParams.startDateParam] = startDate//setDate(startDate, api.incrementalParams.startDateFormat)
-                        let endDate = new Date()
                         //if (api.incrementalParams.endDateLogic == "inclusive")
-                        endDate = setDateForIncremental(lastRecordDate, currentDate, api.incrementalParams.endDateFormat, pollDelay, api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end")//.setTime(endDate.getTime() - 1000 * 60 * 60 * 24)
-                        queryParams[api.incrementalParams.endDateParam] = endDate//setDate(endDate, api.incrementalParams.endDateFormat)
+                        if (api.incrementalParams.endDateParam) {
+                            let endDate = new Date()
+                            endDate = setDateForIncremental(lastRecordDate, currentDate, api.incrementalParams.endDateFormat, pollDelay, api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end")//.setTime(endDate.getTime() - 1000 * 60 * 60 * 24)
+                            queryParams[api.incrementalParams.endDateParam] = endDate
+                        }//setDate(endDate, api.incrementalParams.endDateFormat)
                     }
                     else if (api.incrementalParams.startDateValue) {
                         logger.info(`No records found for ${api.name} API, polling from configured start date...`)
