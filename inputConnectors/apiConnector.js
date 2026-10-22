@@ -13,14 +13,6 @@ function dbHasSameData(obj1, obj2) {
     return JSON.stringify(obj1) == JSON.stringify(obj2)
 }
 
-function setDate(currentDate, format) {
-    if (format === "YYYY-MM-DD")
-        return currentDate.toISOString().split("T")[0]
-    if (format === "millis")
-        return Math.floor(currentDate.getTime())
-    if (format == "RFC 3339")
-        return currentDate.toISOString()
-}
 function setDateForIncremental(lastPollDateIn, currentDate, format, pollDelay, startLogic, endLogic, verse) {
     startLogic = startLogic || "inclusive"
     let lastPollDate = new Date(lastPollDateIn)
@@ -68,12 +60,16 @@ function setDateForIncremental(lastPollDateIn, currentDate, format, pollDelay, s
         else if (verse === "end")
             delay = 0
     }
+    else
+        logger.warn("Unknown start/end logic; using startLogic inclusive && endLogic exclusive")
     if (format === "YYYY-MM-DD")
         return new Date((verse == "start" ? lastPollDate : currentDate).getTime() - pollDelay + delay).toISOString().split("T")[0]
     if (format === "millis")
         return new Date((verse == "start" ? lastPollDate : currentDate).getTime() - pollDelay + delay).getTime()
     if (format == "RFC 3339")
         return new Date((verse == "start" ? lastPollDate : currentDate).getTime() - pollDelay + delay).toISOString()
+    logger.warn(`Unknown date format "${format}", using RFC 3339`)
+    return new Date((verse == "start" ? lastPollDate : currentDate).getTime() - pollDelay + delay).toISOString()
 }
 
 // The API collection (collections.api.mongo, "sources"); its records and PostgreSQL rows as configured
@@ -233,9 +229,7 @@ async function pollAPI() {
                             if (api.incrementalParams.endDateParam) {
                                 lastRecordDate = new Date()
                                 lastRecordDate.setTime(currentDate.getTime() - 1000 * 60 * 60 * 24)
-                                queryParams = { [api.incrementalParams.endDateParam]: setDateForIncremental(lastRecordDate, endDate, api.incrementalParams.endDateFormat, (Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0), api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end") }
-                                if (api.queryParams)
-                                    queryParams = { ...queryParams, ...api.queryParams }
+                                queryParams[api.incrementalParams.endDateParam] = setDateForIncremental(lastRecordDate, endDate, api.incrementalParams.endDateFormat, (Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0), api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end")
                             }
                         }
                         if (lastRecord) {
@@ -268,6 +262,8 @@ async function pollAPI() {
                             mustPull = false
                         }
                     }
+                    const existingSources = api.incremental ? [] : await storedRecords(api.url)
+                    const known = api.incremental ? null : new Set(existingSources.map(item => JSON.stringify(item)))
                     if (mustPull)
                         do {
                             let urlWithParams = api.url + (api.url.includes("?") ? "&" : "?") + `${api.pagination.limitParam}=${api.pagination.limit}&${api.pagination.offsetParam}=${offset}`
@@ -286,9 +282,13 @@ async function pollAPI() {
                                     await pollStatus.markPending(api.url, currentDate, stored)
                                 }
                                 else {
-                                    const existingSources = api.incremental ? [] : await storedRecords(api.url)
                                     const newSources = response.data.map(item => makeItem((api.incremental ? { ...item, datePolled: currentDate } : item), api.url))
-                                    const sourcesToInsert = api.incremental ? newSources : newSources.filter(newItem => !existingSources.some(existingItem => dbHasSameData(existingItem, newItem)))
+                                    const sourcesToInsert = api.incremental ? newSources : newSources.filter(item => {
+                                        const key = JSON.stringify(item)
+                                        if (known.has(key)) return false
+                                        known.add(key)
+                                        return true
+                                    })
                                     if (sourcesToInsert.length > 0) {
                                         const stored = await storeRecords(sourcesToInsert, api.url, { collector, logName: api.name })
                                         await pollStatus.markPending(api.url, currentDate, stored)
@@ -335,9 +335,7 @@ async function pollAPI() {
                         if (api.incrementalParams.endDateParam) {
                             lastRecordDate = new Date()
                             lastRecordDate.setTime(currentDate.getTime() - 1000 * 60 * 60 * 24)
-                            queryParams = { [api.incrementalParams.endDateParam]: setDateForIncremental(lastRecordDate, endDate, api.incrementalParams.endDateFormat, (Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0), api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end") }
-                            if (api.queryParams)
-                                queryParams = { ...queryParams, ...api.queryParams }
+                            queryParams[api.incrementalParams.endDateParam] = setDateForIncremental(lastRecordDate, endDate, api.incrementalParams.endDateFormat, (Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0), api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end")
                         }
                     }
                     if (lastRecord) {

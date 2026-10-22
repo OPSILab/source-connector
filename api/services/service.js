@@ -15,7 +15,7 @@ const { createQueue } = require("../../utils/requestQueue")
 // Orion data goes to the Orion collection (collections.orion): datapoints upserted by dupl_hash (utils/datapoints.js),
 // other records replaced by dataset url (utils/sourceRecords.js)
 const { upsertDatapoints, openDatapointsWriter } = require("../../utils/datapoints")
-const { sleep, verifyLostSubscription, checkMustUpdateDistributionDcatAp, fastAndPartialOrionizeEntity } = require("../../utils/common")
+const { sleep, verifyLostSubscriptionOrion, checkMustUpdateDistributionDcatAp, fastAndPartialOrionizeEntity } = require("../../utils/common")
 updateJWT()
   .then((token) => {
     logger.debug("Obtained Keycloak token:", token);
@@ -27,6 +27,13 @@ updateJWT()
 const path = require("path");
 let attrWithUrl = config.orion?.attrWithUrl || "datasetUrl";
 require("../../inputConnectors/orionConnector");
+
+function notContainsSkippingParams(ent) {
+  for (let skippingParam in config.orion.skippingParams)
+    if (config.orion.skippingParams[skippingParam].some(item => item == ent[skippingParam]?.value))
+      return false
+  return true
+}
 
 function extractValue(ent, attr, nestedAttr, defaultValue) {
   if (nestedAttr)
@@ -262,7 +269,7 @@ async function executeRequest(req, res) {
     let mustUpdate, mustDownload
     if (existingEntity)
       mustUpdate = checkMustUpdateDistributionDcatAp(fastAndPartialOrionizeEntity(ent), fastAndPartialOrionizeEntity(existingEntity))
-    else {
+    else if (notContainsSkippingParams(fastAndPartialOrionizeEntity(ent))) {
       mustDownload = true
       logger.info(`Entity ${id} not found in database, mapping...`)
     }
@@ -460,6 +467,6 @@ module.exports = {
     if (config.sourceConnectors.minioConnector)
       minioWriter.sync()
     if (config.sourceConnectors.orionConnector)
-      verifyLostSubscription()
+      verifyLostSubscriptionOrion()
   },
 };

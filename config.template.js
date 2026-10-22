@@ -57,7 +57,12 @@ module.exports = {
     // Fields of the Orion data (datapoints) whose values are not indexed in values / entries (the key is): a measure
     // like `value` has hundreds of thousands of distinct values. They stay searchable, they are just not suggested
     // (the frontend says so). After a change: POST /api/rebuild?mode=entries&connector=orion.
-    datapointsNotIndexed: ["value"]
+    datapointsNotIndexed: ["value"],
+    skippingParams: {
+      accessUrl: [
+        "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/dataflow/ESTAT/bd_hgnace_r?references=descendants&detail=referencepartial&format=sdmx_2.1_generic&compressed=true"
+      ]// New Orion distributions not synchronized when one of these attributes has one of the listed values (exact match, case sensitive). Distributions already stored keep being updated.
+    }
   },
   logLevel: "info",
   syncInterval: 86400000,
