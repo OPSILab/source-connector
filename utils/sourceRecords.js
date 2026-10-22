@@ -75,10 +75,11 @@ function makeItem(item, origin, connector = "api") {
     return { ...item, source: origin, sourceId: sourceId }
 }
 
+// Returns the ids of the inserted rows ([] when the connector does not write to PostgreSQL or the insert failed)
 async function insertToPostgre(data, name, batchValue, url, connector = "api") {
     const { toPostgres, postgres: table } = collectionSettings(connector)
     if (!toPostgres || !data.length)
-        return
+        return []
     await waitForPostgreInit()
     await ensurePgTable(table)
     const values = []
@@ -95,11 +96,13 @@ async function insertToPostgre(data, name, batchValue, url, connector = "api") {
         return `($${n + 1}, $${n + 2}, $${n + 3})`
     }).join(', ')
     try {
-        await pgQuery(`INSERT INTO ${table} (name, data, record) VALUES ${placeholders}`, values)
+        const { rows } = await pgQuery(`INSERT INTO ${table} (name, data, record) VALUES ${placeholders} RETURNING id`, values)
         logger.info(`Inserted ${data.length} records for ${name} in PostgreSQL ${table}`)
+        return rows.map(row => row.id)
     }
     catch (error) {
         logger.error(`Error inserting records for ${name} in PostgreSQL ${table}`, error)
+        return []
     }
 }
 
@@ -138,10 +141,13 @@ async function clearOrigin(origin, connector = "api") {
     await deletePostgresOrigin(origin, connector)
 }
 
-// Stores records already made with makeItem: MongoDB + keys/values/entries (collector) and PostgreSQL, as configured
+// Stores records already made with makeItem: MongoDB + keys/values/entries (collector) and PostgreSQL, as configured.
+// Returns the ids of what was inserted: { mongo: [_id], postgres: [id] } (utils/pollStatus.js keeps them while a
+// paginated poll is running). The Orion upsert does not report them: mongo is [] there.
 async function storeRecords(records, origin, { connector = "api", collector, logName = origin, sqlName } = {}) {
+    const stored = { mongo: [], postgres: [] }
     if (!records.length)
-        return
+        return stored
     const settings = collectionSettings(connector)
     if (settings.toMongo) {
         if (connector == "orion" && config.upsertRecords == true)
@@ -150,10 +156,11 @@ async function storeRecords(records, origin, { connector = "api", collector, log
             // the origin has just been cleared)
             await collectionModel(connector).upsertMany(records)
         else
-            await collectionModel(connector).insertMany(records)
+            stored.mongo = (await collectionModel(connector).insertMany(records)).map(doc => doc._id)
         await collector?.add(records)
     }
-    await insertToPostgre(records, logName, sqlName, origin, connector)
+    stored.postgres = await insertToPostgre(records, logName, sqlName, origin, connector)
+    return stored
 }
 
 // Like replaceRecords, for data that arrives in blocks: removes everything of `origin`, then add(items) stores each

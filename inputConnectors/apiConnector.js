@@ -2,9 +2,10 @@ const config = require('../config')
 const logger = require('percocologger')
 const axios = require('axios')
 const { createCollector } = require('../utils/entriesStore')
-const { makeItem, replaceRecords, clearOrigin, storeRecords } = require('../utils/sourceRecords')
+const { makeItem, replaceRecords, clearOrigin, storeRecords, pgQuery, waitForPostgreInit, ensurePgTable } = require('../utils/sourceRecords')
 const { collectionSettings, collectionModel } = require('../utils/collections')
 const locks = require('../utils/jobLocks')
+const pollStatus = require('../utils/pollStatus')
 let tokens = {}
 
 function dbHasSameData(obj1, obj2) {
@@ -85,6 +86,30 @@ async function storedRecords(origin) {
     const existing = await Source().find({ source: origin }).lean()
     existing.forEach(item => delete item._id)
     return existing
+}
+
+// The last poll of an incremental API: its most recent record (only datePolled is read). From MongoDB, or from
+// PostgreSQL when the API records are not stored in MongoDB (collections.api.toMongo false); null when there is none,
+// or when the records are stored in neither (every poll then starts from startDateValue, or from the beginning).
+let apiFromIndex // index on the url of the PostgreSQL rows, created once
+async function lastPolledRecord(url) {
+    const settings = collectionSettings("api")
+    if (settings.toMongo)
+        return await Source().findOne({ source: url }).sort({ datePolled: -1 }).lean()
+    if (settings.toPostgres) {
+        await waitForPostgreInit()
+        await ensurePgTable(settings.postgres)
+        apiFromIndex ||= pgQuery(`CREATE INDEX IF NOT EXISTS ${settings.postgres}_from_idx ON ${settings.postgres} ((record->>'from'))`)
+            .catch(error => {
+                apiFromIndex = undefined
+                throw error
+            })
+        await apiFromIndex
+        const { rows } = await pgQuery(`SELECT max((data->>'datePolled')::timestamptz) AS "datePolled" FROM ${settings.postgres} WHERE record->>'from' = $1`, [url])
+        return rows[0]?.datePolled ? { datePolled: rows[0].datePolled } : null
+    }
+    logger.warn(`${url}: the API records are stored neither in MongoDB nor in PostgreSQL, every incremental poll starts from the beginning`)
+    return null
 }
 
 function getValueFromParam(obj, param) {//item[api.batch.param]
@@ -187,6 +212,8 @@ async function pollAPI() {
                 else if (api.pagination) {
                     const collector = createCollector(api.url, "api")
                     let offset = api.pagination.offset || 0
+                    // records of a previous poll of this API that stopped before its last page: deleted, then polled again
+                    await pollStatus.rollbackPending(api.url, { logName: api.name })
                     if (config.apiConnectorConfig.upsertRecords)
                         await clearOrigin(api.url, "api")
                     let response
@@ -195,7 +222,7 @@ async function pollAPI() {
                     let queryParams = { ...api.queryParams }
                     if (api.incremental) {
                         logger.info(`Polling ${api.name} API for incremental records...`)
-                        const lastRecord = collectionSettings("api").toMongo ? await Source().findOne({ source: api.url }).sort({ datePolled: -1 }).lean() : null
+                        const lastRecord = await lastPolledRecord(api.url)
                         //const currentDate = new Date()
                         let endDate = new Date()
                         //if (api.incrementalParams.endDateLogic == "inclusive")
@@ -255,14 +282,16 @@ async function pollAPI() {
                                     response.data = [response.data]
                                 if (config.apiConnectorConfig.upsertRecords) {
                                     const insertingData = response.data.map(item => makeItem((api.incremental ? { ...item, datePolled: currentDate } : item), api.url))
-                                    await storeRecords(insertingData, api.url, { collector, logName: api.name })
+                                    const stored = await storeRecords(insertingData, api.url, { collector, logName: api.name })
+                                    await pollStatus.markPending(api.url, currentDate, stored)
                                 }
                                 else {
                                     const existingSources = api.incremental ? [] : await storedRecords(api.url)
                                     const newSources = response.data.map(item => makeItem((api.incremental ? { ...item, datePolled: currentDate } : item), api.url))
                                     const sourcesToInsert = api.incremental ? newSources : newSources.filter(newItem => !existingSources.some(existingItem => dbHasSameData(existingItem, newItem)))
                                     if (sourcesToInsert.length > 0) {
-                                        await storeRecords(sourcesToInsert, api.url, { collector, logName: api.name })
+                                        const stored = await storeRecords(sourcesToInsert, api.url, { collector, logName: api.name })
+                                        await pollStatus.markPending(api.url, currentDate, stored)
                                         logger.info(`Inserted ${sourcesToInsert.length} new records for ${api.name} API`)
                                     }
                                     else
@@ -287,12 +316,14 @@ async function pollAPI() {
 
                         } while (api.pagination.condition(response));
                     await collector.flush()
+                    // every page stored: the records of this poll are no longer pending
+                    await pollStatus.completePoll(api.url, currentDate)
 
                 }
                 else if (api.incremental) {
                     logger.info(`Polling ${api.name} API for incremental records...`)
                     const collector = createCollector(api.url, "api")
-                    const lastRecord = collectionSettings("api").toMongo ? await Source().findOne({ source: api.url }).sort({ datePolled: -1 }).lean() : null
+                    const lastRecord = await lastPolledRecord(api.url)
                     const currentDate = new Date()
                     let queryParams = { ...api.queryParams }
                     let endDate = new Date()
@@ -443,3 +474,5 @@ async function getToken(url, requestType, credentials, authProfile, body, header
 
 pollAPI()
 setInterval(pollAPI, config.apiConnectorConfig.pollInterval)
+
+module.exports = { pollAPI }
