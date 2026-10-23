@@ -8,6 +8,12 @@ const locks = require('../utils/jobLocks')
 const pollStatus = require('../utils/pollStatus')
 let tokens = {}
 
+function setStartOffset(type){
+    if (type == "RFC 3339")
+        return "1970-01-01T00:00:00Z"
+    return 0
+}
+
 function dbHasSameData(obj1, obj2) {
     //logger.info("Comparing objects:", JSON.stringify(obj1), JSON.stringify(obj2), JSON.stringify(obj1) == JSON.stringify(obj2))
     return JSON.stringify(obj1) == JSON.stringify(obj2)
@@ -207,7 +213,9 @@ async function pollAPI() {
                 }
                 else if (api.pagination) {
                     const collector = createCollector(api.url, "api")
-                    let offset = api.pagination.offset || 0
+                    let offset = api.pagination.offsetValue.startFrom || setStartOffset(api.pagination.offsetValue.type)
+                    queryParams[api.pagination.offsetParam] = offset
+                    queryParams[api.pagination.limitParam] = api.pagination.limit
                     // records of a previous poll of this API that stopped before its last page: deleted, then polled again
                     await pollStatus.rollbackPending(api.url, { logName: api.name })
                     if (config.apiConnectorConfig.upsertRecords)
@@ -266,12 +274,11 @@ async function pollAPI() {
                     const known = api.incremental ? null : new Set(existingSources.map(item => JSON.stringify(item)))
                     if (mustPull)
                         do {
-                            let urlWithParams = api.url + (api.url.includes("?") ? "&" : "?") + `${api.pagination.limitParam}=${api.pagination.limit}&${api.pagination.offsetParam}=${offset}`
                             logger.info(`Polling ${api.name} API with offset ${offset}...`)
-                            logger.info("api ", urlWithParams, "called with ", {
+                            logger.info("api ", api.url, "called with ", {
                                 headers
                             })
-                            response = queryParams ? await axios.get(urlWithParams, { headers, params: queryParams }) : await axios.get(urlWithParams, { headers })
+                            response = queryParams ? await axios.get(api.url, { headers, params: queryParams }) : await axios.get(api.url, { headers })
                             logger.info(`Data from ${api.name} API:`, response.data?.length)
                             if (response.data) {
                                 if (!Array.isArray(response.data))
@@ -423,6 +430,7 @@ async function pollAPI() {
                     logger.error("Status:", error.response.status)
                     logger.error("Data:", error.response.data)
                     logger.error("Headers:", error.request.headers)
+                    logger.debug(error)
                     //logger.error("Request keys:", Object.keys(error.request))
                     //logger.error("Request: ",error.request)
                 }
