@@ -31,3 +31,4 @@ token.js
 *.sandbox.js
 _node_modules
 
+test/output/
