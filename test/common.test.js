@@ -63,6 +63,22 @@ describe("getEntries", () => {
         assert.deepEqual(entries, { name: { A: ["public-data"], B: ["public-data"] } })
     })
 
+    test("geojson: the top-level fields too (the source of an API record), not features nor type", async () => {
+        const url = "https://devetaki.travel2fit.eu/wp-json/t2d/v1/villages"
+        const geojson = {
+            type: "FeatureCollection",
+            source: url,
+            features: [
+                { type: "Feature", properties: { name: "Etara" }, geometry: { type: "Polygon", coordinates: [[[25.3, 42.8], [25.31, 42.81], [25.3, 42.8]]] } },
+                { type: "Feature", properties: { name: "Bozhentsi" }, geometry: { type: "Point", coordinates: [25.4, 42.87] } }
+            ]
+        }
+        const before = JSON.stringify(geojson)
+        const entries = await entriesOf([geojson], "json")
+        assert.deepEqual(entries, { source: { [url]: ["public-data"] }, name: { Etara: ["public-data"], Bozhentsi: ["public-data"] } })
+        assert.equal(JSON.stringify(geojson), before) // the stored record is not modified
+    })
+
     test("visibility from the object name: private (email), shared, public", async () => {
         assert.deepEqual(await entriesOf([{ k: "v" }], "json", "user@demetrix.it/data model mapper/f.json"), { k: { v: ["user@demetrix.it"] } })
         assert.deepEqual(await entriesOf([{ k: "v" }], "json", "PILOT SHARED Data/f.json"), { k: { v: ["PILOT SHARED Data"] } })

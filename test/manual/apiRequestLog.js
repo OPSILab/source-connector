@@ -9,9 +9,9 @@
 //   LOG_LEVEL=debug                  connector logs on the console (default: info; never saved to logs/).
 //                                    debug prints the api configurations, credentials included.
 //
-// Not a *.test.js file: `npm test` does not run it. The requests to the token endpoints are recorded with body and
-// data redacted (credentials, access_token); the query params are written as they are (an api key in queryParams ends
-// up in the file).
+// Not a *.test.js file: `npm test` does not run it. Everything is written as it is, the requests to the token
+// endpoints too (credentials in the body, access_token in the data) and the query params (api keys): the file stays
+// on this machine (test/output/ is in .gitignore).
 const path = require("path")
 const fs = require("fs")
 const os = require("os")
@@ -88,10 +88,6 @@ function apiOf(url, method) {
     return api?.name || (authUrls.has(url) ? "token" : undefined)
 }
 
-const redact = value => value && typeof value == "object" ?
-    Object.fromEntries(Object.keys(value).map(key => [key, "<redacted>"])) :
-    value === undefined ? undefined : "<redacted>"
-
 const output = path.resolve(process.argv[2] || path.join(ROOT, "test/output", `api-requests-${new Date().toISOString().replace(/[:.]/g, "-")}.json`))
 fs.mkdirSync(path.dirname(output), { recursive: true })
 fs.writeFileSync(output, "[\n")
@@ -104,7 +100,6 @@ function write(entry) {
 let sequence = 0
 axios.interceptors.request.use(request => {
     const url = axios.getUri({ ...request, params: undefined })
-    const token = authUrls.has(request.url)
     request.requestLog = {
         n: ++sequence,
         api: apiOf(request.url, request.method),
@@ -114,7 +109,7 @@ axios.interceptors.request.use(request => {
             url,
             params: request.params,
             fullUrl: axios.getUri(request),
-            body: token ? redact(request.data) : request.data
+            body: request.data
         }
     }
     return request
@@ -123,7 +118,7 @@ axios.interceptors.response.use(
     response => {
         const log = response.config.requestLog
         if (log)
-            write({ ...log, response: { status: response.status, data: authUrls.has(response.config.url) ? redact(response.data) : response.data } })
+            write({ ...log, response: { status: response.status, data: response.data } })
         return response
     },
     error => {
@@ -132,7 +127,7 @@ axios.interceptors.response.use(
             write({
                 ...log,
                 response: error.response ?
-                    { status: error.response.status, data: authUrls.has(error.config.url) ? redact(error.response.data) : error.response.data } :
+                    { status: error.response.status, data: error.response.data } :
                     { error: error.message }
             })
         return Promise.reject(error)

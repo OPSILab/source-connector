@@ -226,12 +226,14 @@ module.exports = {
     else if (obj[0].csv && type != "csv")
       type = "csv"//throw new Error("obj is a csv and not " + type)
     if (type == "json") {
-      if (obj[0].features)
-        obj = [{ json: obj[0].features }]
+      if (obj[0].features) {
+        const { features, type: geojsonType, ...objWithoutFeatures } = obj[0]
+        syncEntries(objWithoutFeatures, visibility, entries)
+        obj = [{ json: features }]
+      }
       else {
         logger.trace(obj[0])
         syncEntries(obj[0], visibility, entries)
-
         return
       }
 
