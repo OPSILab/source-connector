@@ -212,8 +212,9 @@ async function pollAPI() {
                     }
                 }
                 else if (api.pagination) {
+                    let queryParams = { ...api.queryParams }
                     const collector = createCollector(api.url, "api")
-                    let offset = api.pagination.offsetValue.startFrom || setStartOffset(api.pagination.offsetValue.type)
+                    let offset = api.pagination.offsetValue?.startFrom || setStartOffset(api.pagination.offsetValue?.type)
                     queryParams[api.pagination.offsetParam] = offset
                     queryParams[api.pagination.limitParam] = api.pagination.limit
                     // records of a previous poll of this API that stopped before its last page: deleted, then polled again
@@ -223,7 +224,6 @@ async function pollAPI() {
                     let response
                     let mustPull = true
                     const currentDate = new Date()
-                    let queryParams = { ...api.queryParams }
                     if (api.incremental) {
                         logger.info(`Polling ${api.name} API for incremental records...`)
                         const lastRecord = await lastPolledRecord(api.url)
@@ -274,7 +274,7 @@ async function pollAPI() {
                     const known = api.incremental ? null : new Set(existingSources.map(item => JSON.stringify(item)))
                     if (mustPull)
                         do {
-                            logger.info(`Polling ${api.name} API with offset ${offset}...`)
+                            logger.info(`Polling ${api.name} API with offset ${queryParams[api.pagination.offsetParam]}...`)
                             logger.info("api ", api.url, "called with ", {
                                 headers
                             })
@@ -305,13 +305,13 @@ async function pollAPI() {
                                         logger.info(`No new records to insert for ${api.name} API`)
 
                                 }
-                                if (typeof api.pagination.offsetValue === "object" && api.pagination.offsetValue.type === "fromResponse")
-                                    if (response.data[0]?.[api.pagination.offsetValue.value] === undefined || response.data[0]?.[api.pagination.offsetValue.value] === null || response.data[0]?.[api.pagination.offsetValue.value] === offset)
+                                if (typeof api.pagination.offsetValue === "object" && api.pagination.offsetValue.from === "response")
+                                    if (response.data[0]?.[api.pagination.offsetValue.value] === undefined || response.data[0]?.[api.pagination.offsetValue.value] === null || response.data[0]?.[api.pagination.offsetValue.value] === queryParams[api.pagination.offsetParam])
                                         break
                                     else
-                                        offset = response.data[0]?.[api.pagination.offsetValue.value]
+                                        queryParams[api.pagination.offsetParam] = response.data[0]?.[api.pagination.offsetValue.value]
                                 else
-                                    offset += api.pagination.limit
+                                    queryParams[api.pagination.offsetParam] += api.pagination.limit
                             }
                             else
                                 logger.info("No sources to insert")

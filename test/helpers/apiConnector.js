@@ -26,8 +26,9 @@ function fakePagedApi(pages) {
     const realGet = axios.get
     const api = { requests: [], failAtOffset: undefined, pages }
     axios.get = async (url, options) => {
-        const offset = Number(new URL(url).searchParams.get("offset"))
-        api.requests.push({ offset, params: options?.params })
+        // offset and limit as query params (axios params) or, as before, in the url
+        const offset = Number(options?.params?.offset ?? new URL(url).searchParams.get("offset"))
+        api.requests.push({ offset, params: structuredClone(options?.params) }) // the connector reuses the same object for every page
         if (offset === api.failAtOffset)
             throw new Error("connection reset")
         return { data: structuredClone(api.pages[offset / 2] || []) }

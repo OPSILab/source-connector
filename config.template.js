@@ -148,7 +148,6 @@ module.exports = {
                     offsetParam: "offset",
                     limitParam: "limit",
                     limit: 2,
-                    offset: 0,
                     condition: (response) => (response.data.length > 0)
                 },
                 url: "http://localhost:1026/ngsi-ld/v1/entities?type=DistributionDCAT-AP",
