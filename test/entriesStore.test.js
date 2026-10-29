@@ -274,6 +274,21 @@ describe("formats", () => {
         assert.equal(store.entriesFormat(undefined), "object")
     })
 
+    test("collector, GeoJSON: the top-level fields (the source of an API record) as geojson and object, the properties as geojson", async () => {
+        const url = "https://api.example/villages"
+        const collector = store.createCollector(url, "api")
+        await collector.add([{
+            source: url, type: "FeatureCollection",
+            features: [{ type: "Feature", properties: { village: "Etara" }, geometry: { type: "Point", coordinates: [25.3, 42.8] } }]
+        }])
+        await collector.flush()
+        const source = (await db.docs(Entries, { key: "source", value: url }))[0]
+        assert.deepEqual(source.formats.sort(), ["geojson", "object"]) // suggested for the GeoJSON and the JSON file types
+        assert.deepEqual((await db.docs(Values, { value: url }))[0].formats.sort(), ["geojson", "object"])
+        assert.deepEqual((await db.docs(Key, { key: "village" }))[0].formats, ["geojson"])
+        assert.deepEqual((await db.docs(Key)).map(k => k.key).sort(), ["source", "village"]) // no type, no features.*
+    })
+
     test("collector: one ref per format of the documents, `formats` is their union", async () => {
         const collector = store.createCollector("https://api/mixed", "api")
         await collector.add([

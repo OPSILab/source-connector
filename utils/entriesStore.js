@@ -33,6 +33,15 @@ const COLLECTOR_CHUNK_ITEMS = 500 // items accumulated in RAM before a flush
 const HAS_REFS = { "refs.origin": { $exists: true } }
 const FORMATS = ["object", "json", "csv", "geojson"]
 
+// The top-level fields of a GeoJSON document (features and type aside), e.g. the source of an API record.
+// common.getEntries indexes them with the feature properties (format geojson: the GeoJSON file type looks at the top
+// level too); their entries are written with format "object" as well, so that the JSON file type - which searches
+// the top-level fields of every document - suggests them.
+function geojsonTopLevel(doc) {
+  const { features, type, ...topLevel } = doc
+  return topLevel
+}
+
 // The format of the entries of a document - the same cases as common.getEntries
 function entriesFormat(doc) {
   if (doc?.csv)
@@ -185,7 +194,8 @@ function createCollector(origin, connector) {
     async add(items) {
       for (const item of items) {
         const { _id, ...data } = item // _id is a mongo id, not a data field
-        const { acc, keysOnly } = byFormat[entriesFormat(data)] ||= { acc: {}, keysOnly: {} }
+        const format = entriesFormat(data)
+        const { acc, keysOnly } = byFormat[format] ||= { acc: {}, keysOnly: {} }
         if (connector == "orion")
           delete data.dupl_hash // the Datapoint dedup key (the whole document as JSON): one value per datapoint
         // fields whose values are not indexed: only their key (same visibility as getEntries without a name)
@@ -194,6 +204,8 @@ function createCollector(origin, connector) {
           keysOnly[field] = ["public-data"]
         }
         await getEntries([data], "json", undefined, acc) // name undefined -> "public-data"
+        if (format == "geojson") // its top-level fields also as "object" (see geojsonTopLevel)
+          await getEntries([geojsonTopLevel(data)], "json", undefined, (byFormat.object ||= { acc: {}, keysOnly: {} }).acc)
         if (++pending >= COLLECTOR_CHUNK_ITEMS)
           await this.flush()
       }
@@ -244,6 +256,7 @@ async function removeRefs({ withoutConnector = false, connectors = [] } = {}) {
 module.exports = {
   FORMATS,
   entriesFormat,
+  geojsonTopLevel,
   createCollector,
   removeRefs,
   removeOrigin,
