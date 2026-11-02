@@ -12,6 +12,7 @@ mongoose.connect(config.mongo, { useNewUrlParser: true, useUnifiedTopology: true
     const logger = require('percocologger')
     logger.info(config.queryAllowedExtensions);
     logger.info("Connected to mongo")
+    require("./utils/requestLog").install() // failed HTTP requests -> statuslog collection
     const routes = require("./api/routes/router")
     app.use(cors());
     app.use(express.urlencoded({ extended: false }));

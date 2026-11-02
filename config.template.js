@@ -74,6 +74,13 @@ module.exports = {
   port: 3000,
   updateOwner: "later",
   writeLogsOnFile: true,
+  // Failed HTTP requests (url, query params, headers, body, status, response data) saved in the MongoDB collection
+  // "statuslog", as they are (credentials included) and kept forever; body and response data cut at maxDataSize
+  // characters (utils/requestLog.js)
+  statusLog: {
+    enabled: true,
+    maxDataSize: 10000
+  },
   mongo: "mongodb://localhost:22000/Minio-Mongo", // mongo url
   authConfig: {
     idmHost: "https://platform.beopendep.it/auth",
