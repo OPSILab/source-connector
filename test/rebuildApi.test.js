@@ -7,6 +7,9 @@ const assert = require("node:assert/strict")
 const express = require("express")
 
 stub("api/services/service.js", {})
+// loaded by index.js in the service; here a spy (requiring the real one would start polling)
+const polled = []
+stub("inputConnectors/apiConnector.js", { pollAPI: async apis => { polled.push(apis) } })
 const router = load("api/routes/router.js")
 const rebuild = load("utils/rebuild.js")
 const locks = load("utils/jobLocks.js")
@@ -127,5 +130,48 @@ describe("auth on /rebuild", () => {
         const wrongKey = (await post("/rebuild?mode=entries", { token: makeToken({ azp: "query-engine" }, { key: otherPrivateKey }) })).status
         assert.ok([403, 500].includes(wrongKey), "rejected: " + wrongKey)
         assert.equal(runCalls.length, 0)
+    })
+})
+
+describe("POST /incremental/reset", () => {
+    const reset = load("utils/resetIncremental.js")
+    const realReset = reset.resetIncremental
+    let resetCalls
+    beforeEach(() => {
+        resetCalls = []
+        reset.resetIncremental = async params => { resetCalls.push(params); return { dryRun: !!params.dryRun, apis: [] } }
+        config.apiConnectorConfig.apiUrls = [
+            { name: "Incr A", url: "https://a.example", incremental: true },
+            { name: "Incr B", url: "https://b.example", incremental: true },
+            { name: "Plain", url: "https://c.example" }
+        ]
+    })
+    after(() => { reset.resetIncremental = realReset })
+
+    test("202: every incremental API, or those named (query string or body), with apiConnector's pollAPI", async () => {
+        let res = await post("/incremental/reset")
+        assert.deepEqual([res.status, await res.json()], [202, { started: true, apis: ["Incr A", "Incr B"] }])
+        res = await post("/incremental/reset?name=Incr%20B")
+        assert.deepEqual((await res.json()).apis, ["Incr B"])
+        res = await post("/incremental/reset", { body: { names: ["Incr A"] } })
+        assert.deepEqual((await res.json()).apis, ["Incr A"])
+        assert.deepEqual(resetCalls.map(call => call.names), [[], ["Incr B"], ["Incr A"]])
+        assert.ok(resetCalls.every(call => typeof call.pollAPI == "function"))
+    })
+
+    test("400 for a name that is not an incremental API; 409 while busy or without apiConnector", async () => {
+        assert.equal((await post("/incremental/reset?name=Plain")).status, 400)
+        locks.polling = true
+        assert.equal((await post("/incremental/reset")).status, 409)
+        locks.polling = false
+        config.sourceConnectors.apiConnector = false
+        assert.equal((await post("/incremental/reset")).status, 409)
+        assert.equal(resetCalls.length, 0)
+    })
+
+    test("dryRun: the counts at once (200)", async () => {
+        const res = await post("/incremental/reset?dryRun=true")
+        assert.deepEqual([res.status, await res.json()], [200, { dryRun: true, apis: [] }])
+        assert.deepEqual(resetCalls, [{ names: [], dryRun: true }])
     })
 })

@@ -8,5 +8,7 @@ router.put(encodeURI("/query"), auth, controller.sync)
 router.get(encodeURI("/queue"), auth, controller.queue)
 router.post(encodeURI("/rebuild"), auth, controller.rebuild)
 router.get(encodeURI("/rebuild"), auth, controller.rebuildStatus)
+router.post(encodeURI("/incremental/reset"), auth, controller.resetIncremental)
+router.get(encodeURI("/incremental/reset"), auth, controller.resetIncrementalStatus)
 
 module.exports = router

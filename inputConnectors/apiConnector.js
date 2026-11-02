@@ -207,15 +207,15 @@ function getValueFromParam(obj, param) {//item[api.batch.param]
     return obj[param]
 }
 
-async function pollAPI() {
+// One poll of `apis` (default: every API of apiConnectorConfig.apiUrls; utils/resetIncremental.js passes some)
+async function pollAPI(apis = config.apiConnectorConfig.apiUrls) {
     if (locks.polling || locks.rebuilding) {
         logger.info(locks.polling ? "Previous API poll still running, skipping this one" : "Rebuild from sources running, skipping this API poll")
         return
     }
     locks.polling = true
     try {
-        const urls = config.apiConnectorConfig.apiUrls
-        for (const api of urls) {
+        for (const api of apis || []) {
             try {
                 const headers = {}
                 for (const header in api.headers)

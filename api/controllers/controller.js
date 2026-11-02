@@ -1,6 +1,8 @@
 const service = require("../services/service.js")
 const logger = require('percocologger')
 const rebuild = require("../../utils/rebuild")
+const resetIncremental = require("../../utils/resetIncremental")
+const config = require("../../config")
 const locks = require("../../utils/jobLocks")
 
 module.exports = {
@@ -58,6 +60,39 @@ module.exports = {
 
     rebuildStatus: async (req, res) => {
         res.send(rebuild.getRebuildStatus())
+    },
+
+    // POST /incremental/reset?name=<api name>&name=... (also { names: [...] } in the JSON body; none: every incremental
+    // API), &dryRun=true: only the counts. Deletes the records of those APIs and polls them again from the start
+    // (utils/resetIncremental.js), in background: 202; progress/result via GET /incremental/reset.
+    resetIncremental: async (req, res) => {
+        const pick = name => req.query?.[name] ?? req.body?.[name]
+        const raw = pick("name") ?? pick("names")
+        const names = (Array.isArray(raw) ? raw : raw === undefined ? [] : [raw]).map(String).filter(Boolean)
+        const dryRun = pick("dryRun") === true || pick("dryRun") === "true"
+        let apis
+        try {
+            apis = resetIncremental.selectApis(names)
+        }
+        catch (error) {
+            return res.status(400).send(error.message)
+        }
+        if (dryRun)
+            return res.send(await resetIncremental.resetIncremental({ names, dryRun: true }))
+        if (!config.sourceConnectors?.apiConnector)
+            return res.status(409).send("apiConnector is disabled (sourceConnectors.apiConnector): nothing would poll the APIs again")
+        if (locks.rebuilding)
+            return res.status(409).send("A rebuild or a reset is already running")
+        if (locks.polling)
+            return res.status(409).send("An API poll is running, retry when it has finished")
+        const { pollAPI } = require("../../inputConnectors/apiConnector") // already loaded by index.js
+        logger.info("Reset of the incremental APIs requested", apis.map(api => api.name))
+        resetIncremental.resetIncremental({ names, pollAPI }).catch(() => { }) // outcome in the status
+        res.status(202).send({ started: true, apis: apis.map(api => api.name) })
+    },
+
+    resetIncrementalStatus: async (req, res) => {
+        res.send(resetIncremental.getResetStatus())
     }
 
 }
