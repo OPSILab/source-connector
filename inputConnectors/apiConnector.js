@@ -8,36 +8,86 @@ const locks = require('../utils/jobLocks')
 const pollStatus = require('../utils/pollStatus')
 let tokens = {}
 
-function prepareIncremental(lastRecord, api, queryParams, currentDate) {
-    let endDate = new Date()
-    let lastRecordDate
-    if (!lastRecord) {
-        if (api.incrementalParams.endDateParam) {
-            lastRecordDate = new Date()
-            lastRecordDate.setTime(currentDate.getTime() - 1000 * 60 * 60 * 24)
-            queryParams[api.incrementalParams.endDateParam] = setDateForIncremental(lastRecordDate, endDate, api.incrementalParams.endDateFormat, (Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0), api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end")
-        }
+const DAY = 1000 * 60 * 60 * 24
+const YMD = "YYYY-MM-DD"
+const utcMidnight = date => new Date(date.toISOString().split("T")[0])
+
+// incrementalParams.maxWindow (ms): the longest time span of one request; undefined when not set or not usable (warned).
+// With YYYY-MM-DD dates it is a whole number of days, at least one.
+function maxWindowOf(api) {
+    const params = api.incrementalParams
+    const maxWindow = params.maxWindow
+    if (maxWindow === undefined || maxWindow === null)
+        return undefined
+    if (!Number.isFinite(maxWindow) || maxWindow <= 0) {
+        logger.warn(`${api.name}: maxWindow must be a positive number of milliseconds, ignored (${maxWindow})`)
+        return undefined
     }
+    if (!params.endDateParam) {
+        logger.warn(`${api.name}: maxWindow needs an endDateParam to split the requests, ignored`)
+        return undefined
+    }
+    if (params.startDateFormat == YMD || params.endDateFormat == YMD) {
+        const days = Math.max(1, Math.floor(maxWindow / DAY))
+        if (days * DAY != maxWindow)
+            logger.warn(`${api.name}: maxWindow ${maxWindow} ms with YYYY-MM-DD dates: ${days} day(s)`)
+        return days * DAY
+    }
+    return maxWindow
+}
+
+// [from, b1, b2, ..., to]: the bounds of the windows from `from` to `to`, each at most maxWindow long. With YYYY-MM-DD
+// dates the inner bounds are midnights (UTC) and the last window lasts at least a day, so that the dates of two
+// windows follow one another as those of two daily polls do (setDateForIncremental).
+function windowBounds(from, to, maxWindow, days) {
+    const bounds = [from]
+    const limit = days ? utcMidnight(to).getTime() : to.getTime()
+    for (let bound = (days ? utcMidnight(from) : from).getTime() + maxWindow; bound < limit; bound += maxWindow)
+        bounds.push(new Date(bound))
+    bounds.push(to)
+    return bounds
+}
+
+// The date params of an incremental poll, one object per request: from the last poll (or startDateValue) to now, in
+// windows of at most incrementalParams.maxWindow if set, contiguous as two consecutive polls are (start / end logic,
+// pollDelay). mustPull false (no requests): already polled today. lastRecordDate: the last poll, for the logs.
+function prepareIncremental(lastRecord, api, currentDate) {
+    const params = api.incrementalParams
+    const pollDelay = Number.isFinite(params.pollDelay) ? params.pollDelay : 0
+    const dateOf = (from, to, verse) => setDateForIncremental(from, to, verse == "start" ? params.startDateFormat : params.endDateFormat,
+        pollDelay, params.startDateLogic, params.endDateLogic, verse)
+    const yesterday = new Date(currentDate.getTime() - DAY)
+    let from, firstStart
     if (lastRecord) {
-        let pollDelay = Number.isFinite(api.incrementalParams.pollDelay) ? api.incrementalParams.pollDelay : 0
-        lastRecordDate = new Date(lastRecord["datePolled"])
-        let startDate = new Date()
-        startDate = setDateForIncremental(lastRecordDate, currentDate, api.incrementalParams.startDateFormat, pollDelay, api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "start")
-        queryParams[api.incrementalParams.startDateParam] = startDate
-        if (api.incrementalParams.endDateParam) {
-            let endDate = new Date()
-            endDate = setDateForIncremental(lastRecordDate, currentDate, api.incrementalParams.endDateFormat, pollDelay, api.incrementalParams.startDateLogic, api.incrementalParams.endDateLogic, "end")
-            queryParams[api.incrementalParams.endDateParam] = endDate
+        from = new Date(lastRecord["datePolled"])
+        if (from.toISOString().split("T")[0] === currentDate.toISOString().split("T")[0]) {
+            logger.info(`No new records to poll for ${api.name} API (last record date: ${from.toISOString()})`)
+            return { lastRecordDate: from, mustPull: false, windows: [] }
         }
     }
-    else if (api.incrementalParams.startDateValue) {
+    else if (params.startDateValue) {
         logger.info(`No records found for ${api.name} API, polling from configured start date...`)
-        queryParams[api.incrementalParams.startDateParam] = api.incrementalParams.startDateValue
+        from = new Date(params.startDateValue)
+        firstStart = params.startDateValue // sent as configured
     }
     else {
         logger.info(`No records found for ${api.name} API, polling all records...`)
+        return { mustPull: true, windows: [params.endDateParam ? { [params.endDateParam]: dateOf(yesterday, currentDate, "end") } : {}] }
     }
-    return lastRecordDate
+    const maxWindow = maxWindowOf(api)
+    const bounds = maxWindow && !isNaN(from) ?
+        windowBounds(from, currentDate, maxWindow, params.startDateFormat == YMD || params.endDateFormat == YMD) :
+        [isNaN(from) ? yesterday : from, currentDate]
+    const windows = []
+    for (let k = 0; k + 1 < bounds.length; k++) {
+        const window = { [params.startDateParam]: k == 0 && firstStart !== undefined ? firstStart : dateOf(bounds[k], bounds[k + 1], "start") }
+        if (params.endDateParam)
+            window[params.endDateParam] = dateOf(bounds[k], bounds[k + 1], "end")
+        windows.push(window)
+    }
+    if (windows.length > 1)
+        logger.info(`${api.name}: ${windows.length} requests of at most ${maxWindow} ms (maxWindow)`)
+    return { lastRecordDate: lastRecord ? from : undefined, mustPull: true, windows }
 }
 
 function setStartOffset(type) {
@@ -254,21 +304,21 @@ async function pollAPI() {
                     if (config.apiConnectorConfig.upsertRecords)
                         await clearOrigin(api.url, "api")
                     let response
-                    let mustPull = true
                     const currentDate = new Date()
+                    const startOffset = queryParams[api.pagination.offsetParam]
+                    // the requests: incremental, one per window (none if already polled today); otherwise one
+                    let windows = [{}]
                     if (api.incremental) {
                         logger.info(`Polling ${api.name} API for incremental records...`)
-                        const lastRecord = await lastPolledRecord(api.url)
-                        const lastRecordDate = prepareIncremental(lastRecord, api, queryParams, currentDate)
-                        logger.debug(lastRecordDate?.toISOString().split("T")[0], " ", currentDate.toISOString().split("T")[0])
-                        if (lastRecord && lastRecordDate && lastRecordDate.toISOString().split("T")[0] === currentDate.toISOString().split("T")[0]) {
-                            logger.info(`No new records to poll for ${api.name} API (last record date: ${lastRecordDate.toISOString()})`)
-                            mustPull = false
-                        }
+                        windows = prepareIncremental(await lastPolledRecord(api.url), api, currentDate).windows
                     }
                     const existingSources = api.incremental ? [] : await storedRecords(api.url)
                     const known = api.incremental ? null : new Set(existingSources.map(item => JSON.stringify(item)))
-                    if (mustPull)
+                    for (const window of windows) {
+                        // every window from its first page; the dates after: an offset that is also the start date
+                        // (a cursor like "since") starts from the window
+                        queryParams[api.pagination.offsetParam] = startOffset
+                        Object.assign(queryParams, window)
                         do {
                             logger.info(`Polling ${api.name} API with offset ${queryParams[api.pagination.offsetParam]}...`)
                             logger.info("api ", api.url, "called with ", {
@@ -312,6 +362,7 @@ async function pollAPI() {
                             else
                                 logger.info("No sources to insert")
                         } while (api.pagination.condition(response));
+                    }
                     await collector.flush()
                     // every page stored: the records of this poll are no longer pending
                     await pollStatus.completePoll(api.url, currentDate)
@@ -320,31 +371,31 @@ async function pollAPI() {
                 else if (api.incremental) {
                     logger.info(`Polling ${api.name} API for incremental records...`)
                     const collector = createCollector(api.url, "api")
-                    const lastRecord = await lastPolledRecord(api.url)
+                    // records of a previous poll of this API that stopped before its last request (maxWindow): deleted,
+                    // then polled again
+                    await pollStatus.rollbackPending(api.url, { logName: api.name })
                     const currentDate = new Date()
-                    let queryParams = { ...api.queryParams }
-                    const lastRecordDate = prepareIncremental(lastRecord, api, queryParams, currentDate)
-                    logger.debug(lastRecordDate?.toISOString().split("T")[0], " ", currentDate.toISOString().split("T")[0])
-                    if (lastRecord && lastRecordDate && lastRecordDate.toISOString().split("T")[0] === currentDate.toISOString().split("T")[0]) {
-                        logger.info(`No new records to poll for ${api.name} API (last record date: ${lastRecordDate.toISOString()})`)
-                    }
-                    else {
-                        logger.info(`Polling ${api.name} API for records after ${lastRecordDate?.toISOString()}...`)
+                    const { lastRecordDate, windows } = prepareIncremental(await lastPolledRecord(api.url), api, currentDate)
+                    for (const window of windows) {
+                        logger.info(`Polling ${api.name} API for records after ${lastRecordDate?.toISOString()}...`, window)
                         const response = await axios.get(api.url, {
                             headers,
-                            params: queryParams
+                            params: { ...api.queryParams, ...window }
                         })
                         if (!Array.isArray(response.data))
                             response.data = [response.data]
                         if (response.data.length > 0) {
                             logger.info(`Data from ${api.name} API:`, response.data.length)
                             const insertingData = response.data.map(item => makeItem({ ...item, datePolled: currentDate }, api.url))
-                            await storeRecords(insertingData, api.url, { collector, logName: api.name })
+                            const stored = await storeRecords(insertingData, api.url, { collector, logName: api.name })
+                            await pollStatus.markPending(api.url, currentDate, stored)
                         }
                         else
                             logger.info(`No new records found for ${api.name} API (last record date: ${lastRecordDate?.toISOString()})`)
                     }
                     await collector.flush()
+                    // every request done: the records of this poll are no longer pending
+                    await pollStatus.completePoll(api.url, currentDate)
                 }
                 else {
                     const collector = createCollector(api.url, "api")
