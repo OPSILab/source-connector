@@ -1,5 +1,5 @@
-// Failed axios requests saved in the statuslog collection (utils/requestLog.js), on real MongoDB (see helpers/db.js),
-// against a local HTTP server.
+// The axios requests, failed and successful, saved in the statuslog collection (utils/requestLog.js), on real MongoDB
+// (see helpers/db.js), against a local HTTP server.
 const { load, config, resetConfig } = require("./helpers/env")
 const db = require("./helpers/db")
 const { test, describe, before, after, beforeEach } = require("node:test")
@@ -78,9 +78,47 @@ describe("statuslog", () => {
         assert.ok(doc.error)
     })
 
-    test("successful requests are not saved", async () => {
+    test("a successful request: saved with outcome success, status, data and duration; it expires after successRetentionDays", async () => {
+        await axios.get(base + "/ok", { params: { a: 1 } })
+        const [doc] = await docs()
+        assert.equal(doc.outcome, "success")
+        assert.equal(doc.method, "GET")
+        assert.equal(doc.fullUrl, base + "/ok?a=1")
+        assert.equal(doc.status, 200)
+        assert.equal(doc.data, JSON.stringify({ ok: true }))
+        assert.equal(typeof doc.durationMs, "number")
+        assert.ok(doc.durationMs >= 0)
+        assert.equal(doc.error, undefined)
+        const days = (new Date(doc.expiresAt) - new Date(doc.createdAt)) / (24 * 60 * 60 * 1000)
+        assert.equal(days, 30)
+    })
+
+    test("successRetentionDays: the expiry of the successes; 0: kept forever", async () => {
+        config.statusLog.successRetentionDays = 2
         await axios.get(base + "/ok")
-        assert.deepEqual(await docs(), [])
+        const [doc] = await docs()
+        assert.equal((new Date(doc.expiresAt) - new Date(doc.createdAt)) / (24 * 60 * 60 * 1000), 2)
+        await StatusLog.collection.deleteMany({})
+        config.statusLog.successRetentionDays = 0
+        await axios.get(base + "/ok")
+        const [forever] = await docs()
+        assert.equal(forever.outcome, "success")
+        assert.equal(forever.expiresAt, undefined)
+    })
+
+    test("statusLog.successes false: only the errors saved", async () => {
+        config.statusLog.successes = false
+        await axios.get(base + "/ok")
+        await axios.get(base + "/fail").catch(() => { })
+        assert.deepEqual((await docs()).map(doc => [doc.outcome, doc.status]), [["error", 500]])
+    })
+
+    test("the errors: outcome error, never expire", async () => {
+        await axios.get(base + "/fail").catch(() => { })
+        const [doc] = await docs()
+        assert.equal(doc.outcome, "error")
+        assert.equal(doc.expiresAt, undefined)
+        assert.equal(typeof doc.durationMs, "number")
     })
 
     test("response data longer than maxDataSize: cut, with its length", async () => {
