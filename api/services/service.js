@@ -98,13 +98,18 @@ async function retryOnReset(request) {
     }
 }
 
-// GET towards the Data Model Mapper; on 403 the token is refreshed once (a long mapping outlives it)
+// The token refused: 401 (RFC 6750: missing, expired, invalid); 403 too, as the mapper answered before it was
+// aligned to the standard (to be removed once every mapper answers 401)
+const TOKEN_REFUSED = new Set([401, 403])
+const tokenRefused = error => TOKEN_REFUSED.has(Number(error?.response?.status))
+
+// GET towards the Data Model Mapper; when the token is refused it is refreshed once (a long mapping outlives it)
 async function dmmGet(url) {
   const get = () => retryOnReset(() => axios.get(url, { headers: { Authorization: `Bearer ${bearerToken}` }, ...dmmAgents }))
   try {
     return await get()
   } catch (error) {
-    if (error.response?.status != 403)
+    if (!tokenRefused(error))
       throw error
     logger.info("Token refused by the Data Model Mapper, refreshing it")
     bearerToken = await updateJWT(true)
@@ -325,10 +330,11 @@ async function executeRequest(req, res) {
           }
           catch (error) {
             logger.debug("Error fetching map from API Connector:", error.response?.data || error.message);
-            if (error.response?.status == "404" || error.response?.status == 404)
-              logger.warn("No map. Parsing instead")
-            else
-              logger.error("Error fetching map from API Connector:", error.response?.data || error.message);
+            // only "no map" (404) means parsing instead: any other error (token refused, mapper down...) fails this
+            // attempt, handled below as an error of the mapping (token refreshed and retried, or given up)
+            if (Number(error.response?.status) != 404)
+              throw error
+            logger.warn("No map. Parsing instead")
           }
           if (map?.data)
             response = await axios.post(
@@ -404,7 +410,7 @@ async function executeRequest(req, res) {
             "Error fetching mapped data from API Connector:",
             error.response?.data || error.message
           );
-          if (error.response?.status == "403" || error.response?.status == 403)
+          if (tokenRefused(error))
             try {
               bearerToken = await updateJWT(true);
               retry--;

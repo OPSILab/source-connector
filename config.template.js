@@ -78,6 +78,10 @@ module.exports = {
   // "statuslog", as they are (credentials included); body and response data cut at maxDataSize characters. The
   // errors are kept forever, the successes (successes: false: not saved) for successRetentionDays (0: forever)
   // (utils/requestLog.js)
+  // The password that the destructive operations require besides the login: the reset of the incremental APIs
+  // (POST /api/incremental/reset, the frontend sends it in X-Management-Secret). Empty: those operations are disabled.
+  // Set the same value as managementSecret in the config of the Query-Engine (deletion of cache backups).
+  managementSecret: "",
   statusLog: {
     enabled: true,
     maxDataSize: 10000,

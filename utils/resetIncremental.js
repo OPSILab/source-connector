@@ -6,6 +6,8 @@
 //
 // The shared lock (utils/jobLocks.js): refused while a poll or a rebuild runs; while deleting, the scheduled polls
 // are skipped (locks.rebuilding), then the poll of these APIs holds locks.polling as any poll does.
+// Every reset (not the dry runs) is logged in the collection "incrementalresetlog" (api/models/IncrementalResetLog.js):
+// who, when, which APIs, the counts before / after, the outcome. listResets() reads it (GET /incremental/reset/log).
 // APIs with `batch` are not incremental for apiConnector (their requests ignore incrementalParams): left out.
 const config = require("../config")
 const logger = require("percocologger")
@@ -13,6 +15,8 @@ const locks = require("./jobLocks")
 const pollStatus = require("./pollStatus")
 const { clearOrigin, pgQuery, waitForPostgreInit, ensurePgTable } = require("./sourceRecords")
 const { collectionSettings, collectionModel } = require("./collections")
+const IncrementalResetLog = require("../api/models/IncrementalResetLog")
+const mongoose = require("mongoose")
 
 let status = { running: false }
 
@@ -41,10 +45,20 @@ async function countRecords(url) {
     return counts
 }
 
+// The log of a reset: never makes the reset fail (a failed write is only logged)
+async function writeLog(action) {
+    try {
+        return await action()
+    }
+    catch (error) {
+        logger.error("incrementalresetlog not written:", error?.message || error)
+    }
+}
+
 // names: API names (none: every incremental API). pollAPI: apiConnector's (it polls the APIs it is given).
-// dryRun: only the counts, nothing deleted nor polled.
+// dryRun: only the counts, nothing deleted nor polled. by: who asked (logged).
 // Answer { apis: [{ name, url, before: { mongo, postgres }, after }] }
-async function resetIncremental({ names, pollAPI, dryRun = false } = {}) {
+async function resetIncremental({ names, pollAPI, dryRun = false, by } = {}) {
     const apis = selectApis(names)
     if (dryRun) {
         const result = []
@@ -60,6 +74,11 @@ async function resetIncremental({ names, pollAPI, dryRun = false } = {}) {
         throw Object.assign(new Error("An API poll is running, retry when it has finished"), { code: "BUSY" })
 
     status = { running: true, phase: "deleting", apis: apis.map(api => api.name), startedAt: new Date() }
+    const logId = new mongoose.Types.ObjectId()
+    const logged = await writeLog(() => IncrementalResetLog.collection.insertOne({
+        _id: logId, startedAt: status.startedAt, by: by || "unknown", apis: status.apis, outcome: "running"
+    }).then(() => true))
+    const finish = fields => writeLog(() => logged && IncrementalResetLog.collection.updateOne({ _id: logId }, { $set: { finishedAt: new Date(), ...fields } }))
     const result = []
     locks.rebuilding = true // no scheduled poll while the records are deleted
     try {
@@ -73,6 +92,7 @@ async function resetIncremental({ names, pollAPI, dryRun = false } = {}) {
     }
     catch (error) {
         status = { ...status, running: false, finishedAt: new Date(), error: error.message || String(error) }
+        await finish({ outcome: "error", error: status.error, result })
         throw error
     }
     finally {
@@ -85,13 +105,22 @@ async function resetIncremental({ names, pollAPI, dryRun = false } = {}) {
         for (const entry of result)
             entry.after = await countRecords(entry.url)
         status = { ...status, running: false, phase: "done", finishedAt: new Date(), result }
+        await finish({ outcome: "done", result })
         logger.info("Incremental APIs reset", result)
         return { apis: result }
     }
     catch (error) {
         status = { ...status, running: false, finishedAt: new Date(), error: error.message || String(error) }
+        await finish({ outcome: "error", error: status.error, result })
         throw error
     }
 }
 
-module.exports = { resetIncremental, selectApis, getResetStatus: () => status }
+// The logged resets, newest first (limit: the latest ones). A reset still "running" while none is running here (the
+// Source-Connector stopped during it): "interrupted".
+async function listResets({ limit = 100 } = {}) {
+    const docs = await IncrementalResetLog.collection.find({}).sort({ startedAt: -1, _id: -1 }).limit(limit).toArray()
+    return docs.map(({ _id, ...doc }) => ({ id: String(_id), ...doc, ...(doc.outcome == "running" && !status.running ? { outcome: "interrupted" } : {}) }))
+}
+
+module.exports = { resetIncremental, selectApis, listResets, getResetStatus: () => status }

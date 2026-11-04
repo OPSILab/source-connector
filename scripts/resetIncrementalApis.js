@@ -51,7 +51,7 @@ async function main() {
         const pollAPI = dryRun ? undefined : loadPollAPI()
         while (locks.polling) // the (empty) poll started by apiConnector when loaded
             await new Promise(resolve => setTimeout(resolve, 50))
-        console.log(JSON.stringify(await resetIncremental({ names, pollAPI, dryRun }), null, 2))
+        console.log(JSON.stringify(await resetIncremental({ names, pollAPI, dryRun, by: "script (scripts/resetIncrementalApis.js)" }), null, 2))
     }
     finally {
         await mongoose.disconnect()

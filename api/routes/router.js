@@ -10,5 +10,6 @@ router.post(encodeURI("/rebuild"), auth, controller.rebuild)
 router.get(encodeURI("/rebuild"), auth, controller.rebuildStatus)
 router.post(encodeURI("/incremental/reset"), auth, controller.resetIncremental)
 router.get(encodeURI("/incremental/reset"), auth, controller.resetIncrementalStatus)
+router.get(encodeURI("/incremental/reset/log"), auth, controller.resetIncrementalLog)
 
 module.exports = router

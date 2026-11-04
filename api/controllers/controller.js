@@ -4,6 +4,7 @@ const rebuild = require("../../utils/rebuild")
 const resetIncremental = require("../../utils/resetIncremental")
 const config = require("../../config")
 const locks = require("../../utils/jobLocks")
+const managementSecret = require("../../utils/managementSecret")
 
 module.exports = {
 
@@ -64,7 +65,9 @@ module.exports = {
 
     // POST /incremental/reset?name=<api name>&name=... (also { names: [...] } in the JSON body; none: every incremental
     // API), &dryRun=true: only the counts. Deletes the records of those APIs and polls them again from the start
-    // (utils/resetIncremental.js), in background: 202; progress/result via GET /incremental/reset.
+    // (utils/resetIncremental.js), in background: 202; progress/result via GET /incremental/reset, every reset in
+    // GET /incremental/reset/log. Besides the login, the management password (X-Management-Secret header, config
+    // managementSecret; the dry run does not need it): 403 without it.
     resetIncremental: async (req, res) => {
         const pick = name => req.query?.[name] ?? req.body?.[name]
         const raw = pick("name") ?? pick("names")
@@ -79,6 +82,9 @@ module.exports = {
         }
         if (dryRun)
             return res.send(await resetIncremental.resetIncremental({ names, dryRun: true }))
+        const refused = managementSecret.refusal(req)
+        if (refused)
+            return res.status(403).send(refused)
         if (!config.sourceConnectors?.apiConnector)
             return res.status(409).send("apiConnector is disabled (sourceConnectors.apiConnector): nothing would poll the APIs again")
         if (locks.rebuilding)
@@ -87,12 +93,27 @@ module.exports = {
             return res.status(409).send("An API poll is running, retry when it has finished")
         const { pollAPI } = require("../../inputConnectors/apiConnector") // already loaded by index.js
         logger.info("Reset of the incremental APIs requested", apis.map(api => api.name))
-        resetIncremental.resetIncremental({ names, pollAPI }).catch(() => { }) // outcome in the status
+        resetIncremental.resetIncremental({ names, pollAPI, by: managementSecret.requester(req) }).catch(() => { }) // outcome in the status (and the log)
         res.status(202).send({ started: true, apis: apis.map(api => api.name) })
     },
 
     resetIncrementalStatus: async (req, res) => {
         res.send(resetIncremental.getResetStatus())
+    },
+
+    // GET /incremental/reset/log?limit=: the resets done, newest first (default the latest 100), and whether the
+    // management password is configured (the reset is disabled without it)
+    resetIncrementalLog: async (req, res) => {
+        const limit = req.query?.limit === undefined ? 100 : Number(req.query.limit)
+        if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
+            return res.status(400).send("limit must be 1-1000")
+        try {
+            res.send({ items: await resetIncremental.listResets({ limit }), secretConfigured: managementSecret.configured() })
+        }
+        catch (error) {
+            logger.error(error)
+            res.status(500).send("The log of the resets could not be read")
+        }
     }
 
 }

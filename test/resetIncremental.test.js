@@ -49,6 +49,7 @@ async function storeDuplicated() {
 
 beforeEach(async () => {
     await db.clean()
+    await load("api/models/IncrementalResetLog.js").collection.deleteMany({})
     await db.query("TRUNCATE status RESTART IDENTITY")
     locks.polling = locks.rebuilding = false
     config.apiConnectorConfig.apiUrls = [incremental(), plain]
@@ -102,6 +103,20 @@ describe("resetIncremental", () => {
         await assert.rejects(reset.resetIncremental({ pollAPI }), /rebuild is running/)
         locks.rebuilding = false
         assert.equal((await db.docs(Source, { source: INCR })).length, 3)
+    })
+
+    test("every reset logged (who, APIs, counts, outcome); the dry runs not; a reset left running: interrupted", async () => {
+        fake = fakePagedApi([[{ id: 1, v: "new" }]])
+        await reset.resetIncremental({ dryRun: true })
+        await reset.resetIncremental({ pollAPI, by: "anna@demetrix.it" })
+        await assert.rejects(reset.resetIncremental({ pollAPI: async () => { throw new Error("poll failed") }, by: "bob" }), /poll failed/)
+        const log = await reset.listResets()
+        assert.deepEqual(log.map(entry => [entry.by, entry.apis, entry.outcome, entry.error]),
+            [["bob", ["Incremental"], "error", "poll failed"], ["anna@demetrix.it", ["Incremental"], "done", undefined]])
+        assert.deepEqual(log[1].result.map(api => [api.name, api.before, api.after]), [["Incremental", { mongo: 3, postgres: 3 }, { mongo: 3, postgres: 3 }]])
+        assert.ok(log.every(entry => entry.id && entry.startedAt && entry.finishedAt))
+        await load("api/models/IncrementalResetLog.js").collection.insertOne({ startedAt: new Date(), by: "carl", apis: ["Incremental"], outcome: "running" })
+        assert.equal((await reset.listResets({ limit: 1 }))[0].outcome, "interrupted")
     })
 
     test("not paginated: polled again in windows too", async () => {

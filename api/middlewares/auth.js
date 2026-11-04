@@ -30,6 +30,15 @@ function deniedQuery(query, bucketName, prefix) {
     }
 }
 
+// RFC 6750 / RFC 9110: no token, or a token that is not valid (malformed, wrong signature, expired, not active, not
+// issued for this client): 401 with WWW-Authenticate - the client gets a new token and retries. 403 only for a valid
+// token without the permission (bucket, prefix, role): a new token would not change that.
+const JWT_ERRORS = new Set(["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"])
+function unauthorized(res, description) {
+    res.set("WWW-Authenticate", description ? `Bearer error="invalid_token", error_description="${String(description).replace(/["\\]/g, "'")}"` : "Bearer")
+    return res.status(401).send(description ? "Invalid token: " + description : "Authentication required")
+}
+
 module.exports = {
     auth: async (req, res, next) => {
 
@@ -71,8 +80,8 @@ module.exports = {
                 catch (error) {
 
                     logger.error(error)
-                    if (error.message == "invalid token" || error.message == "jwt expired" || error.message == "jwt malformed")
-                        return res.sendStatus(403);
+                    if (JWT_ERRORS.has(error?.name))
+                        return unauthorized(res, error.message);
                     else
                         return res.sendStatus(500);
                 }
@@ -93,7 +102,7 @@ module.exports = {
                                 next();
                             } else {
                                 logger.error('Token not valid.');
-                                return res.sendStatus(403);
+                                return unauthorized(res, 'token not active');
                             }
                         })
                         .catch(error => {
@@ -139,11 +148,11 @@ module.exports = {
                             next();
                     }
                     else
-                        return res.sendStatus(403);
+                        return unauthorized(res, 'token not issued for this client or expired');
                 }
             }
             else
-                return res.sendStatus(401);
+                return unauthorized(res);
         }
     }
 };

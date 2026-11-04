@@ -39,9 +39,9 @@ beforeEach(() => {
     Object.assign(config.authConfig, { disableAuth: true, clientId: "query-engine", publicKey, userInfoEndpoint: "", introspect: false })
 })
 
-const post = (path, { body, token } = {}) => fetch(baseUrl + path, {
+const post = (path, { body, token, headers = {} } = {}) => fetch(baseUrl + path, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}), ...headers },
     body: body && JSON.stringify(body)
 })
 
@@ -122,13 +122,14 @@ describe("auth on /rebuild", () => {
         assert.equal(res.status, 202)
     })
 
-    test("403 with an expired token, a token of another client or signed with another key", async () => {
-        assert.equal((await post("/rebuild?mode=entries", { token: makeToken({ azp: "query-engine" }, { expiresIn: -60 }) })).status, 403)
-        assert.equal((await post("/rebuild?mode=entries", { token: makeToken({ azp: "someone-else" }) })).status, 403)
-        assert.equal((await post("/rebuild?mode=entries", { token: "not.a.jwt" })).status, 403)
-        // a forged signature ("invalid signature") currently answers 500, not 403: rejected either way
-        const wrongKey = (await post("/rebuild?mode=entries", { token: makeToken({ azp: "query-engine" }, { key: otherPrivateKey }) })).status
-        assert.ok([403, 500].includes(wrongKey), "rejected: " + wrongKey)
+    test("401 invalid_token (RFC 6750) with an expired token, a token of another client, malformed or signed with another key", async () => {
+        for (const token of [makeToken({ azp: "query-engine" }, { expiresIn: -60 }), makeToken({ azp: "someone-else" }), "not.a.jwt",
+            makeToken({ azp: "query-engine" }, { key: otherPrivateKey })]) {
+            const res = await post("/rebuild?mode=entries", { token })
+            assert.equal(res.status, 401)
+            assert.match(res.headers.get("www-authenticate"), /^Bearer error="invalid_token"/)
+        }
+        assert.equal((await post("/rebuild?mode=entries")).headers.get("www-authenticate"), "Bearer")
         assert.equal(runCalls.length, 0)
     })
 })
@@ -139,6 +140,7 @@ describe("POST /incremental/reset", () => {
     let resetCalls
     beforeEach(() => {
         resetCalls = []
+        config.managementSecret = "s3cret"
         reset.resetIncremental = async params => { resetCalls.push(params); return { dryRun: !!params.dryRun, apis: [] } }
         config.apiConnectorConfig.apiUrls = [
             { name: "Incr A", url: "https://a.example", incremental: true },
@@ -147,25 +149,47 @@ describe("POST /incremental/reset", () => {
         ]
     })
     after(() => { reset.resetIncremental = realReset })
+    const SECRET = { "X-Management-Secret": "s3cret" }
+    const resetPost = (path, options = {}) => post(path, { ...options, headers: SECRET })
+
+    test("403 without the management password, with a wrong one, or when none is configured; the dry run does not need it", async () => {
+        for (const headers of [{}, { "X-Management-Secret": "wrong" }]) {
+            const res = await post("/incremental/reset", { headers })
+            assert.equal(res.status, 403)
+            assert.match(await res.text(), /management password/)
+        }
+        config.managementSecret = ""
+        const res = await resetPost("/incremental/reset")
+        assert.deepEqual([res.status, await res.text()], [403, "Disabled: managementSecret is not set in the configuration of the Source-Connector"])
+        assert.equal((await post("/incremental/reset?dryRun=true")).status, 200)
+        assert.deepEqual(resetCalls.map(call => !!call.dryRun), [true])
+    })
+
+    test("who asked is passed on (logged): the e-mail of the token", async () => {
+        config.authConfig.disableAuth = false
+        const res = await post("/incremental/reset", { token: makeToken({ azp: "query-engine", email: "anna@demetrix.it" }), headers: SECRET })
+        assert.equal(res.status, 202)
+        assert.equal(resetCalls[0].by, "anna@demetrix.it")
+    })
 
     test("202: every incremental API, or those named (query string or body), with apiConnector's pollAPI", async () => {
-        let res = await post("/incremental/reset")
+        let res = await resetPost("/incremental/reset")
         assert.deepEqual([res.status, await res.json()], [202, { started: true, apis: ["Incr A", "Incr B"] }])
-        res = await post("/incremental/reset?name=Incr%20B")
+        res = await resetPost("/incremental/reset?name=Incr%20B")
         assert.deepEqual((await res.json()).apis, ["Incr B"])
-        res = await post("/incremental/reset", { body: { names: ["Incr A"] } })
+        res = await resetPost("/incremental/reset", { body: { names: ["Incr A"] } })
         assert.deepEqual((await res.json()).apis, ["Incr A"])
         assert.deepEqual(resetCalls.map(call => call.names), [[], ["Incr B"], ["Incr A"]])
         assert.ok(resetCalls.every(call => typeof call.pollAPI == "function"))
     })
 
     test("400 for a name that is not an incremental API; 409 while busy or without apiConnector", async () => {
-        assert.equal((await post("/incremental/reset?name=Plain")).status, 400)
+        assert.equal((await resetPost("/incremental/reset?name=Plain")).status, 400)
         locks.polling = true
-        assert.equal((await post("/incremental/reset")).status, 409)
+        assert.equal((await resetPost("/incremental/reset")).status, 409)
         locks.polling = false
         config.sourceConnectors.apiConnector = false
-        assert.equal((await post("/incremental/reset")).status, 409)
+        assert.equal((await resetPost("/incremental/reset")).status, 409)
         assert.equal(resetCalls.length, 0)
     })
 
