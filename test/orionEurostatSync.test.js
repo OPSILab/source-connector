@@ -50,6 +50,8 @@ before(() => new Promise(resolve => setImmediate(resolve))) // the Keycloak toke
 beforeEach(() => {
     resetConfig()
     Object.assign(config.orion, { orionBaseUrl: "http://orion", subscribeType: "DistributionDCAT-AP", attrWithUrl: "downloadURL", useNgsiBroker: false })
+    // as in the real configuration: the daily check posts with the mapID of the notification url
+    config.orion.notificationUrl = "http://host.docker.internal:3000/api/orion/subscribe/" + MAP_ID
     db = structuredClone(STORED)
     written.length = 0
     orion = structuredClone(ORION)
