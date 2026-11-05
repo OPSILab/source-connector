@@ -150,6 +150,20 @@ function checkMustUpdateDistributionDcatAp(ent, existingEntity) {
   return changed.length > 0
 }
 
+// Where the recovery check (verifyLostSubscriptionOrion) sends its notifications: this Source-Connector's own route,
+// open as Orion's (api/routes/router.js), with the mapID Orion uses - the segment after /orion/subscribe/ in
+// orion.notificationUrl - else config.mapID; none: the route without mapID (the entity's mapID, or none, applies).
+function selfNotificationUrl(cfg = config) {
+  let mapID
+  try {
+    const match = new URL(cfg.orion?.notificationUrl).pathname.match(/\/orion\/subscribe\/([^/]+)\/?$/)
+    mapID = match ? decodeURIComponent(match[1]) : undefined
+  } catch { }
+  mapID = mapID || cfg.mapID
+  const base = `http://localhost:${cfg.port || 3000}${cfg.basePath || "/api"}/orion/subscribe`
+  return mapID ? `${base}/${encodeURIComponent(mapID)}` : base
+}
+
 module.exports = {
 
   entryPairs,
@@ -157,6 +171,8 @@ module.exports = {
   checkMustUpdateDistributionDcatAp,
 
   fastAndPartialOrionizeEntity,
+
+  selfNotificationUrl,
 
   async verifyLostSubscriptionOrion() {
     try {
@@ -177,7 +193,7 @@ module.exports = {
         logger.info(ent)
         if (checkMustUpdateDistributionDcatAp(ent, existingEntity))
           try {
-            await axios.post("http://localhost:" + (config.port || 3001) + "/api/orion/subscribe/6914a252ddb96948ee67b2e1", {
+            await axios.post(selfNotificationUrl(), {
               "id": "self",
               "type": "Notification",
               "subscriptionId": "self",

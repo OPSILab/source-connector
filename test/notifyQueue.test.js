@@ -292,3 +292,25 @@ describe("Orion notifications while the mapper fails", () => {
         assert.deepEqual(entities.map(doc => doc.entityId), ["urn:ngsi-ld:Distribution:retry"])
     })
 })
+
+describe("Orion notifications with authentication enabled", () => {
+    // Orion cannot send a Keycloak token: the notification route is open, the other routes are not
+    test("a notification without token is processed; GET /api/queue without token: 401", async () => {
+        config.authConfig.disableAuth = false
+        plans = { [DATASET("open")]: ["ok"] }
+        const answers = await notifyAll([notification("open")])
+        assert.deepEqual(answers, [{ status: 200, text: "OK" }])
+        assert.deepEqual(blocks(), [DATASET("open")])
+        assert.equal((await fetch(`${baseUrl}/queue`)).status, 401)
+    })
+
+    test("POST /api/orion/subscribe without mapID: config.mapID", async () => {
+        config.authConfig.disableAuth = false
+        config.mapID = MAP_ID
+        gate = Promise.resolve()
+        plans = { [DATASET("no-map-id")]: ["ok"] }
+        const res = await fetch(`${baseUrl}/orion/subscribe`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(notification("no-map-id")) })
+        assert.deepEqual({ status: res.status, text: await res.text() }, { status: 200, text: "OK" })
+        assert.deepEqual(mapperLog.filter(entry => entry.call == "transform").map(entry => entry.dataset), [DATASET("no-map-id")])
+    })
+})

@@ -172,3 +172,14 @@ describe("small helpers", () => {
         assert.equal(common.cleaned({ a: 1 }), '{"a":1}')
     })
 })
+
+describe("selfNotificationUrl (recovery check)", () => {
+    test("the mapID of orion.notificationUrl, else config.mapID, else none", () => {
+        const url = cfg => common.selfNotificationUrl(cfg)
+        assert.equal(url({ port: 3000, orion: { notificationUrl: "http://host.docker.internal:3000/api/orion/subscribe/6914a252ddb96948ee67b2e1" } }),
+            "http://localhost:3000/api/orion/subscribe/6914a252ddb96948ee67b2e1")
+        assert.equal(url({ port: 3005, basePath: "/sc", mapID: "abc", orion: { notificationUrl: "http://orion-host/api/orion/subscribe" } }),
+            "http://localhost:3005/sc/orion/subscribe/abc")
+        assert.equal(url({ mapID: "", orion: {} }), "http://localhost:3000/api/orion/subscribe")
+    })
+})

@@ -3,7 +3,11 @@ const controller = require("../controllers/controller.js")
 const router = express.Router()
 const { auth } = require("../middlewares/auth.js")
 
-router.post(encodeURI("/orion/subscribe/:mapID"), auth, controller.notifyPath)
+// Orion notifications: open, like a webhook. Orion cannot send a Keycloak token (it would expire inside the
+// subscription), and the recovery check (utils/common.verifyLostSubscriptionOrion) posts here too. Without mapID in
+// the url: the entity's mapID, else config.mapID.
+router.post(encodeURI("/orion/subscribe/:mapID"), controller.notifyPath)
+router.post(encodeURI("/orion/subscribe"), controller.notifyPath)
 router.put(encodeURI("/query"), auth, controller.sync)
 router.get(encodeURI("/queue"), auth, controller.queue)
 router.post(encodeURI("/rebuild"), auth, controller.rebuild)
