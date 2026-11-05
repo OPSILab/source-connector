@@ -10,7 +10,7 @@ const env = require("./env")
 const path = require("path")
 
 const MONGO_URL = process.env.MONGO_TEST_URL || "mongodb://127.0.0.1:27018"
-const PG_URL = process.env.PG_TEST_URL || "postgres://postgres:postgres@127.0.0.1:5433/postgres"
+const PG_URL = process.env.PG_TEST_URL || "postgres://postgres:postgres@127.0.0.1:5434/postgres"
 // the collections of the connectors (config.template.js collections) and of keys / values / entries
 const COLLECTIONS = ["keys", "values", "entries", "sources", "datapoints", "minio", "status"]
 const PG_TABLES = ["sources", "datapoints"]

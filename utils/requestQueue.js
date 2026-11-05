@@ -7,18 +7,35 @@
 //    the second one's request again, in parallel.
 // Here every job starts when the previous one has settled (fulfilled or rejected): an error is that notification's
 // result only, the queue goes on.
+//
+// describe(...args) (optional): what a job is about (e.g. the datasets of a notification), listed by jobs() with when
+// it arrived and, for the one running, when it started. A describe that throws leaves the job without description.
 
-function createQueue(worker) {
+function createQueue(worker, { describe } = {}) {
     let tail = Promise.resolve()
-    let pending = 0
+    const jobs = [] // waiting or running, in arrival order: { receivedAt, startedAt, info }
+    const infoOf = args => {
+        try {
+            return describe ? describe(...args) : undefined
+        }
+        catch {
+            return undefined
+        }
+    }
     return {
         // the notifications waiting or running
-        size: () => pending,
+        size: () => jobs.length,
+        // the same, in arrival order: { receivedAt, startedAt (the running one only), ...info }
+        jobs: () => jobs.map(job => ({ receivedAt: job.receivedAt, ...(job.startedAt ? { startedAt: job.startedAt } : {}), ...job.info })),
         // resolves with the worker's result; rejects with its error (the queue goes on anyway)
         push(...args) {
-            pending++
-            const run = tail.then(() => worker(...args))
-            const done = run.finally(() => { pending-- })
+            const job = { receivedAt: new Date(), info: infoOf(args) }
+            jobs.push(job)
+            const run = tail.then(() => {
+                job.startedAt = new Date()
+                return worker(...args)
+            })
+            const done = run.finally(() => { jobs.splice(jobs.indexOf(job), 1) })
             tail = done.catch(() => { })
             return done
         }

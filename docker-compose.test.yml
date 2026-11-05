@@ -3,7 +3,7 @@
 #   npm test
 #   npm run test:db:down   stop and remove them (data lives in tmpfs, nothing is kept)
 # Also used by .github/workflows/tests-source-connector.yml.
-# Ports 27018 / 5433, not the default ones: they don't clash with a local MongoDB / PostgreSQL.
+# Ports 27018 / 5434, not the default ones: they don't clash with a local MongoDB / PostgreSQL.
 name: source-connector-test
 
 services:
@@ -24,7 +24,7 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"
+      - "5434:5432"
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:

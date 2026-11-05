@@ -30,9 +30,16 @@ module.exports = {
         }
     },
 
+    // GET /queue: the Orion notifications waiting or being processed. { queue: their number, processing: the one being
+    // processed ({ receivedAt, startedAt, entities: [{ id, url }] }) or null, waiting: the others, in arrival order }
     queue : async (req, res) => {
         logger.info("Queue")
-        return await res.send({ queue: await service.queue() })
+        const jobs = service.queueJobs ? service.queueJobs() : []
+        return await res.send({
+            queue: await service.queue(),
+            processing: jobs.find(job => job.startedAt) || null,
+            waiting: jobs.filter(job => !job.startedAt)
+        })
     },
 
     // POST /rebuild?mode=entries|postgres|all&connector=api|orion&origin=<url>&keepLegacy=true (also accepted in the

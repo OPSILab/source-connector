@@ -50,6 +50,8 @@ const DATASET = name => "https://data.example/sdmx/" + name
 // with one part of datapoints) or "session-error" (a session that ends with an error).
 // mapPlans[dataset url]: the answers to its GET /map, in order (an HTTP status; none / "ok": the map)
 let plans, mapPlans, sessions, mapperLog, gate, mapper, mapperUrl
+// holds[dataset url]: a promise its GET /map waits for (the notification stays the one being processed meanwhile)
+let holds = {}
 
 function startMapper() {
     mapper = http.createServer(async (req, res) => {
@@ -68,6 +70,7 @@ function startMapper() {
             const answer = mapPlans[dataset]?.shift() ?? "ok"
             mapperLog.push({ dataset, call: "map", answer, auth })
             await gate // the first notification waits here until every notification has arrived
+            await holds[dataset]
             if (typeof answer == "number")
                 return send(answer, { message: "map: " + answer })
             return send(200, { _id: MAP_ID, description: dataset })
@@ -131,6 +134,7 @@ beforeEach(() => {
     config.authConfig.disableAuth = true
     entities = []
     mapPlans = {}
+    holds = {}
     sessions = {}
     mapperLog = []
     refreshes.length = 0
@@ -147,8 +151,9 @@ const notify = body => fetch(`${baseUrl}/orion/subscribe/${MAP_ID}`, { method: "
     .then(async res => ({ status: res.status, text: await res.text() }))
 
 // Posts the notifications one after the other while the first one to reach the mapper is held there (each one queued
-// before the next is sent: their order is the arrival order), then lets the mapper answer. The HTTP answers.
-async function notifyAll(bodies) {
+// before the next is sent: their order is the arrival order), then (after onHeld, if any) lets the mapper answer.
+// The HTTP answers.
+async function notifyAll(bodies, onHeld) {
     let open
     gate = new Promise(resolve => { open = resolve })
     const answers = []
@@ -158,6 +163,8 @@ async function notifyAll(bodies) {
         while (arrived < start + i + 1)
             await new Promise(resolve => setTimeout(resolve, 5))
     }
+    if (onHeld)
+        await onHeld()
     open()
     return Promise.all(answers)
 }
@@ -216,6 +223,51 @@ describe("Orion notifications while the mapper fails", () => {
         assert.deepEqual(Object.keys(written).sort(), ok.map(DATASET).sort())
         assert.deepEqual(written[DATASET("fine")].map(row => [row.value, row.fromUrl]), [[7, DATASET("fine")]])
         assert.deepEqual(entities.map(doc => doc.entityId).sort(), ok.map(name => "urn:ngsi-ld:Distribution:" + name).sort())
+    })
+
+    test("GET /api/queue: how many, the one being processed (its datasets, since when), the others in arrival order", async () => {
+        plans = { [DATASET("one")]: ["ok"], [DATASET("two")]: ["ok"], [DATASET("three")]: ["ok"] }
+        let held
+        await notifyAll(["one", "two", "three"].map(notification), async () => {
+            held = await (await fetch(`${baseUrl}/queue`)).json()
+        })
+        assert.equal(held.queue, 3)
+        assert.deepEqual(held.processing.entities, [{ id: "urn:ngsi-ld:Distribution:one", url: DATASET("one") }])
+        assert.ok(held.processing.startedAt && held.processing.receivedAt)
+        assert.deepEqual(held.waiting.map(job => job.entities[0].url), [DATASET("two"), DATASET("three")])
+        assert.ok(held.waiting.every(job => job.receivedAt && !job.startedAt))
+        assert.deepEqual(await (await fetch(`${baseUrl}/queue`)).json(), { queue: 0, processing: null, waiting: [] })
+    })
+
+    test("GET /api/queue step by step: 3, 2, 1, 0 as each notification ends, the next one processed each time", async () => {
+        const names = ["one", "two", "three"]
+        plans = Object.fromEntries(names.map(name => [DATASET(name), ["ok"]]))
+        const release = {}
+        for (const name of names)
+            holds[DATASET(name)] = new Promise(resolve => { release[name] = resolve })
+        const queue = async () => (await fetch(`${baseUrl}/queue`)).json()
+        const waitFor = async condition => {
+            for (const started = Date.now(); !(await condition());)
+                if (Date.now() - started > 5000)
+                    throw new Error("timed out")
+                else
+                    await new Promise(resolve => setTimeout(resolve, 10))
+        }
+        const before = arrived
+        const done = notifyAll(names.map(notification))
+        await waitFor(() => arrived >= before + names.length) // all three in the queue
+        for (const [i, name] of names.entries()) {
+            // the notification is at its GET /map, held: it is the one being processed
+            await waitFor(() => mapperLog.some(entry => entry.call == "map" && entry.dataset == DATASET(name)))
+            const state = await queue()
+            assert.equal(state.queue, names.length - i, name)
+            assert.equal(state.processing.entities[0].url, DATASET(name))
+            assert.deepEqual(state.waiting.map(job => job.entities[0].url), names.slice(i + 1).map(DATASET))
+            release[name]()
+        }
+        assert.deepEqual(await done, names.map(() => ({ status: 200, text: "OK" })))
+        assert.deepEqual(await queue(), { queue: 0, processing: null, waiting: [] })
+        assert.deepEqual(Object.keys(written).sort(), names.map(DATASET).sort())
     })
 
     test("a notification that throws (an invalid url): 500 for it only, the next one is mapped", async () => {

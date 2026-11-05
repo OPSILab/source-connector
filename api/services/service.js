@@ -449,13 +449,31 @@ async function executeRequest(req, res) {
   return "OK";
 }
 
-const notifications = createQueue(executeRequest)
+// What a queued notification is about: its entities (id and dataset url), at most 20
+function describeNotification(req) {
+  const data = req?.body?.data || req?.body?.value || req?.body
+  const entities = (Array.isArray(data) ? data : [data]).filter(ent => ent && typeof ent == "object")
+  return {
+    entities: entities.slice(0, 20).map(ent => {
+      const url = extractDownloadURL(ent)
+      return { id: ent.id || ent["@id"], ...(typeof url == "string" ? { url } : {}) }
+    }),
+    ...(entities.length > 20 ? { moreEntities: entities.length - 20 } : {})
+  }
+}
+
+const notifications = createQueue(executeRequest, { describe: describeNotification })
 
 module.exports = {
 
   // notifications waiting or being processed (GET /api/queue)
   queue() {
     return notifications.size()
+  },
+
+  // the same notifications, in arrival order (GET /api/queue): the first one, with startedAt, is being processed
+  queueJobs() {
+    return notifications.jobs()
   },
 
   // One notification at a time, in arrival order: an error ends that notification only (it is returned, as before),

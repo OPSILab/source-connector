@@ -40,6 +40,28 @@ describe("createQueue", () => {
         assert.equal(await queue.push("after"), "after")
     })
 
+    test("jobs: what each job is about (describe), when it arrived, when the running one started", async () => {
+        let release
+        const queue = createQueue(() => new Promise(resolve => { release = resolve }), {
+            describe: name => { if (name == "odd") throw new Error("no description"); return { name } }
+        })
+        const first = queue.push("a")
+        queue.push("odd")
+        await tick(1)
+        const [running, waiting] = queue.jobs()
+        assert.equal(running.name, "a")
+        assert.ok(running.receivedAt instanceof Date && running.startedAt instanceof Date)
+        assert.deepEqual(Object.keys(waiting), ["receivedAt"]) // not started; its describe threw: no description
+        release()
+        await first
+        await tick(1)
+        assert.equal(queue.jobs().length, 1)
+        assert.ok(queue.jobs()[0].startedAt)
+        release()
+        await tick(1)
+        assert.deepEqual(queue.jobs(), [])
+    })
+
     test("size: the jobs waiting or running", async () => {
         let release
         const queue = createQueue(() => new Promise(resolve => { release = resolve }))
