@@ -127,3 +127,50 @@ describe("resetIncremental", () => {
         assert.deepEqual(apis[0].after, { mongo: 3, postgres: 3 })
     })
 })
+
+describe("resetIncremental of a batch API (url with {batch})", () => {
+    const LIST = "https://api.example/stations"
+    const ITEM = id => `https://api.example/stations/${id}/readings`
+    const OTHER = "https://api.example/stations/a/other" // not an element of the batch API (does not end with /readings)
+    const batchApi = {
+        name: "Stations", url: "https://api.example/stations/{batch}/readings", incremental: true,
+        batch: { from: LIST, pick: "items", param: "code" },
+        incrementalParams: { startDateParam: "from", startDateFormat: "YYYY-MM-DD", startDateValue: daysAgo(30), endDateParam: "to", endDateFormat: "YYYY-MM-DD", endDateLogic: "inclusive", maxWindow: 10 * DAY }
+    }
+    let requests, realGet
+
+    beforeEach(async () => {
+        const item = (url, v) => records.makeItem({ v, datePolled: new Date(Date.now() - DAY) }, url)
+        for (const url of [ITEM("a"), ITEM("b"), OTHER])
+            await records.storeRecords([item(url, "old"), item(url, "old")], url)
+        config.apiConnectorConfig.apiUrls = [batchApi, plain]
+        const axios = require("axios")
+        realGet = axios.get
+        requests = []
+        axios.get = async (url, options) => {
+            requests.push({ url, params: structuredClone(options?.params) })
+            if (url == LIST)
+                return { data: { items: [{ code: "a" }, { code: "b" }] } }
+            return { data: [{ v: "new" }] }
+        }
+    })
+    afterEach(() => { require("axios").get = realGet })
+
+    test("dry run: the records of all the elements", async () => {
+        const result = await reset.resetIncremental({ dryRun: true, names: ["Stations"] })
+        assert.deepEqual(result.apis, [{ name: "Stations", url: batchApi.url, records: { mongo: 4, postgres: 4 } }])
+        assert.deepEqual(requests, [])
+    })
+
+    test("the records of every element deleted, every element polled again from startDateValue; other urls untouched", async () => {
+        const { apis } = await reset.resetIncremental({ pollAPI, names: ["Stations"] })
+        assert.deepEqual(apis.map(api => [api.name, api.before, api.elements, api.after]),
+            [["Stations", { mongo: 4, postgres: 4 }, 2, { mongo: 6, postgres: 6 }]])
+        for (const id of ["a", "b"])
+            assert.deepEqual(requests.filter(r => r.url == ITEM(id)).map(r => [r.params.from, r.params.to]),
+                [[daysAgo(30), daysAgo(21)], [daysAgo(20), daysAgo(11)], [daysAgo(10), daysAgo(1)]])
+        assert.deepEqual((await db.docs(Source, { source: ITEM("a") })).map(doc => doc.v), ["new", "new", "new"])
+        assert.deepEqual((await db.docs(Source, { source: OTHER })).map(doc => doc.v), ["old", "old"])
+        assert.equal((await db.query("SELECT 1 FROM sources WHERE record->>'from' = $1", [OTHER])).length, 2)
+    })
+})

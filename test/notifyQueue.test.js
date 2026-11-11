@@ -302,6 +302,10 @@ describe("Orion notifications with authentication enabled", () => {
         assert.deepEqual(answers, [{ status: 200, text: "OK" }])
         assert.deepEqual(blocks(), [DATASET("open")])
         assert.equal((await fetch(`${baseUrl}/queue`)).status, 401)
+        // the configuration that can be shown: open too
+        const res = await fetch(`${baseUrl}/config`)
+        assert.equal(res.status, 200)
+        assert.deepEqual(Object.keys(await res.json()), ["sources", "pollInterval", "apis"])
     })
 
     test("POST /api/orion/subscribe without mapID: config.mapID", async () => {

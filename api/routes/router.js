@@ -9,6 +9,8 @@ const { auth } = require("../middlewares/auth.js")
 router.post(encodeURI("/orion/subscribe/:mapID"), controller.notifyPath)
 router.post(encodeURI("/orion/subscribe"), controller.notifyPath)
 router.put(encodeURI("/query"), auth, controller.sync)
+// What anyone may see of the configuration (read only, nothing secret): no authentication
+router.get(encodeURI("/config"), controller.publicConfig)
 router.get(encodeURI("/queue"), auth, controller.queue)
 router.post(encodeURI("/rebuild"), auth, controller.rebuild)
 router.get(encodeURI("/rebuild"), auth, controller.rebuildStatus)

@@ -125,9 +125,13 @@ describe("apiConnector: a paginated poll interrupted and repeated", () => {
 
             fake.failAtOffset = 2 // the second page fails
             await pollAPI()
-            assert.deepEqual((await db.docs(Source)).map(doc => doc.sourceId), [1, 2])
-            assert.equal((await statusDocs()).filter(doc => doc.pending).length, 2)
-            assert.equal((await pgStatus()).length, 2)
+            if (incremental) {
+                assert.deepEqual((await db.docs(Source)).map(doc => doc.sourceId), [1, 2])
+                assert.equal((await statusDocs()).filter(doc => doc.pending).length, 2)
+                assert.equal((await pgStatus()).length, 2)
+            }
+            else // not incremental: the pages are compared with the stored records once all read, nothing stored yet
+                assert.deepEqual(await db.docs(Source), [])
 
             fake.failAtOffset = undefined
             fake.requests.length = 0

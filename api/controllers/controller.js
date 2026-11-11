@@ -5,6 +5,7 @@ const resetIncremental = require("../../utils/resetIncremental")
 const config = require("../../config")
 const locks = require("../../utils/jobLocks")
 const managementSecret = require("../../utils/managementSecret")
+const publicConfig = require("../../utils/publicConfig")
 
 module.exports = {
 
@@ -28,6 +29,12 @@ module.exports = {
             logger.error(error)
             res.status(500).send(error.toString() == "[object Object]" ? error : error.toString())
         }
+    },
+
+    // GET /config (no authentication): the connectors enabled and the APIs polled, without anything secret
+    // (utils/publicConfig.js)
+    publicConfig: async (req, res) => {
+        res.send(publicConfig.publicConfig())
     },
 
     // GET /queue: the Orion notifications waiting or being processed. { queue: their number, processing: the one being

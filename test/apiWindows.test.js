@@ -64,7 +64,7 @@ describe("paginated, YYYY-MM-DD, first poll from startDateValue (30 days ago), m
         assert.equal((await db.docs(Source)).length, 0)
     })
 
-    test("a window that fails: the poll is not complete, the next one deletes its records and starts again", async () => {
+    test("a window that fails: the windows before it kept, the next poll starts from the one that failed", async () => {
         fake = fakePagedApi([[{ id: 1 }]])
         config.apiConnectorConfig.apiUrls = [{ name: "W", url: URL_A, pagination, incremental: true, incrementalParams: ymdParams("inclusive") }]
         const get = axios.get
@@ -79,8 +79,8 @@ describe("paginated, YYYY-MM-DD, first poll from startDateValue (30 days ago), m
         axios.get = get
         fake.requests.length = 0
         await pollAPI()
-        assert.equal(fake.requests[0].params.from, daysAgo(30)) // from startDateValue again
-        assert.equal(windowsOf(fake.requests).length, 3)
+        assert.equal(fake.requests[0].params.from, daysAgo(20)) // the second window: the first one is never asked again
+        assert.equal(windowsOf(fake.requests).length, 2)
         assert.equal((await db.docs(Source)).length, 3)
     })
 
@@ -156,7 +156,7 @@ describe("not paginated", () => {
         assert.deepEqual(fake.requests, [])
     })
 
-    test("interrupted at the second window: its records deleted at the next poll, which starts again", async () => {
+    test("interrupted at the second window: the first one kept, the next poll (same day) starts from the second", async () => {
         fake = fakePagedApi([[{ id: 1 }, { id: 2 }]])
         config.apiConnectorConfig.apiUrls = [api()]
         const get = axios.get
@@ -168,12 +168,11 @@ describe("not paginated", () => {
         }
         await pollAPI()
         assert.equal((await db.docs(Source)).length, 2)
-        assert.equal((await db.docs(Status)).filter(doc => doc.pending).length, 2)
+        assert.deepEqual(await db.docs(Status), []) // the first window is done
         axios.get = get
         fake.requests.length = 0
         await pollAPI()
-        assert.equal(fake.requests[0].params.from, daysAgo(30))
-        assert.equal(fake.requests.length, 3)
+        assert.deepEqual(fake.requests.map(r => [r.params.from, r.params.to]), [[daysAgo(20), daysAgo(11)], [daysAgo(10), daysAgo(1)]])
         assert.equal((await db.docs(Source)).length, 6)
         assert.deepEqual(await db.docs(Status), [])
     })

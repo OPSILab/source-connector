@@ -70,12 +70,21 @@ describe("incremental API, records only in PostgreSQL", () => {
         assert.equal(fake.requests[0].params.from, "2026-01-01")
     })
 
-    test("records stored neither in MongoDB nor in PostgreSQL: every poll from startDateValue", async () => {
+    test("in MongoDB too: an API that was not incremental before (its records without datePolled) starts from startDateValue", async () => {
+        config.collections.api.toMongo = true
+        await records.storeRecords([records.makeItem({ id: 0 }, URL_A), records.makeItem({ id: 1 }, URL_A)], URL_A)
+        config.apiConnectorConfig.apiUrls = [incrementalApi]
+        await pollAPI()
+        assert.equal(fake.requests[0].params.from, "2026-01-01")
+    })
+
+    test("records stored neither in MongoDB nor in PostgreSQL: the state of the polls (MongoDB) still says where to start", async () => {
         config.collections.api.toPostgres = false
         config.apiConnectorConfig.apiUrls = [incrementalApi]
         await pollAPI()
+        assert.equal(fake.requests[0].params.from, "2026-01-01")
         fake.requests.length = 0
         await pollAPI()
-        assert.equal(fake.requests[0].params.from, "2026-01-01")
+        assert.deepEqual(fake.requests, []) // already polled today
     })
 })
