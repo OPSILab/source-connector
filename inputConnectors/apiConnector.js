@@ -15,7 +15,7 @@ const YMD = "YYYY-MM-DD"
 const utcMidnight = date => new Date(date.toISOString().split("T")[0])
 
 // incrementalParams.maxWindow (ms): the longest time span of one request; undefined when not set or not usable (warned).
-// With YYYY-MM-DD dates it is a whole number of days, at least one.
+// With YYYY-MM-DD dates or alignToDays it is a whole number of days, at least one.
 function maxWindowOf(api) {
     const params = api.incrementalParams
     const maxWindow = params.maxWindow
@@ -29,10 +29,10 @@ function maxWindowOf(api) {
         logger.warn(`${api.name}: maxWindow needs an endDateParam to split the requests, ignored`)
         return undefined
     }
-    if (params.startDateFormat == YMD || params.endDateFormat == YMD) {
+    if (params.startDateFormat == YMD || params.endDateFormat == YMD || params.alignToDays === true) {
         const days = Math.max(1, Math.floor(maxWindow / DAY))
         if (days * DAY != maxWindow)
-            logger.warn(`${api.name}: maxWindow ${maxWindow} ms with YYYY-MM-DD dates: ${days} day(s)`)
+            logger.warn(`${api.name}: maxWindow ${maxWindow} ms with ${params.alignToDays === true ? "alignToDays" : "YYYY-MM-DD dates"}: ${days} day(s)`)
         return days * DAY
     }
     return maxWindow
@@ -55,14 +55,20 @@ function windowBounds(from, to, maxWindow, days) {
 // startDateValue, to now, in windows of at most incrementalParams.maxWindow if set, contiguous as two consecutive
 // polls are (start / end logic, pollDelay). ends: the end of each window (stored in the state once it is done).
 // mustPull false (no requests): already polled today. lastRecordDate: where the poll starts, for the logs.
+// incrementalParams.alignToDays: the windows are whole UTC days, from midnight to the next midnight, and only the days
+// already over (at now - pollDelay) are asked: the start is moved back to its midnight (startDateValue too), the end
+// is the last midnight; the bounds are not moved by pollDelay again (start / end logic still applied).
 function prepareIncremental(lastRecord, api, currentDate, state) {
     const params = api.incrementalParams
     const pollDelay = Number.isFinite(params.pollDelay) ? params.pollDelay : 0
+    const aligned = params.alignToDays === true
     const dateOf = (from, to, verse) => setDateForIncremental(from, to, verse == "start" ? params.startDateFormat : params.endDateFormat,
-        pollDelay, params.startDateLogic, params.endDateLogic, verse)
-    const yesterday = new Date(currentDate.getTime() - DAY)
+        aligned ? 0 : pollDelay, params.startDateLogic, params.endDateLogic, verse)
+    // the end of the poll: now, or with alignToDays the last midnight (UTC) of now - pollDelay
+    const until = aligned ? utcMidnight(new Date(currentDate.getTime() - pollDelay)) : currentDate
+    const yesterday = new Date(until.getTime() - DAY)
     let from, firstStart
-    const sameDay = date => date.toISOString().split("T")[0] === currentDate.toISOString().split("T")[0]
+    const sameDay = date => !aligned && date.toISOString().split("T")[0] === currentDate.toISOString().split("T")[0]
     if (state?.lastEnd) {
         from = new Date(state.lastEnd)
         if (state.complete && sameDay(from)) {
@@ -82,16 +88,24 @@ function prepareIncremental(lastRecord, api, currentDate, state) {
     else if (params.startDateValue) {
         logger.info(`No records found for ${api.name} API, polling from configured start date...`)
         from = new Date(params.startDateValue)
-        firstStart = params.startDateValue // sent as configured
+        if (!aligned)
+            firstStart = params.startDateValue // sent as configured
     }
     else {
         logger.info(`No records found for ${api.name} API, polling all records...`)
-        return { mustPull: true, windows: [params.endDateParam ? { [params.endDateParam]: dateOf(yesterday, currentDate, "end") } : {}], ends: [currentDate] }
+        return { mustPull: true, windows: [params.endDateParam ? { [params.endDateParam]: dateOf(yesterday, until, "end") } : {}], ends: [until] }
+    }
+    if (aligned && !isNaN(from)) {
+        from = utcMidnight(from)
+        if (from.getTime() >= until.getTime()) {
+            logger.info(`No new records to poll for ${api.name} API (alignToDays: polled until ${from.toISOString()}, the next day is not over yet)`)
+            return { lastRecordDate: from, mustPull: false, windows: [], ends: [] }
+        }
     }
     const maxWindow = maxWindowOf(api)
     const bounds = maxWindow && !isNaN(from) ?
-        windowBounds(from, currentDate, maxWindow, params.startDateFormat == YMD || params.endDateFormat == YMD) :
-        [isNaN(from) ? yesterday : from, currentDate]
+        windowBounds(from, until, maxWindow, params.startDateFormat == YMD || params.endDateFormat == YMD || aligned) :
+        [isNaN(from) ? yesterday : from, until]
     const windows = []
     for (let k = 0; k + 1 < bounds.length; k++) {
         const window = { [params.startDateParam]: k == 0 && firstStart !== undefined ? firstStart : dateOf(bounds[k], bounds[k + 1], "start") }
@@ -636,4 +650,4 @@ async function getToken(url, requestType, credentials, authProfile, body, header
 pollAPI()
 setInterval(pollAPI, config.apiConnectorConfig.pollInterval)
 
-module.exports = { pollAPI }
+module.exports = { pollAPI, prepareIncremental }
