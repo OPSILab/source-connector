@@ -93,7 +93,7 @@ function prepareIncremental(lastRecord, api, currentDate, state) {
     }
     else {
         logger.info(`No records found for ${api.name} API, polling all records...`)
-        return { mustPull: true, windows: [params.endDateParam ? { [params.endDateParam]: dateOf(yesterday, until, "end") } : {}], ends: [until] }
+        return { mustPull: true, windows: [dateParamsOf(params, undefined, params.endDateParam ? dateOf(yesterday, until, "end") : undefined)], ends: [until] }
     }
     if (aligned && !isNaN(from)) {
         from = utcMidnight(from)
@@ -107,15 +107,38 @@ function prepareIncremental(lastRecord, api, currentDate, state) {
         windowBounds(from, until, maxWindow, params.startDateFormat == YMD || params.endDateFormat == YMD || aligned) :
         [isNaN(from) ? yesterday : from, until]
     const windows = []
-    for (let k = 0; k + 1 < bounds.length; k++) {
-        const window = { [params.startDateParam]: k == 0 && firstStart !== undefined ? firstStart : dateOf(bounds[k], bounds[k + 1], "start") }
-        if (params.endDateParam)
-            window[params.endDateParam] = dateOf(bounds[k], bounds[k + 1], "end")
-        windows.push(window)
-    }
+    for (let k = 0; k + 1 < bounds.length; k++)
+        windows.push(dateParamsOf(params,
+            k == 0 && firstStart !== undefined ? firstStart : dateOf(bounds[k], bounds[k + 1], "start"),
+            params.endDateParam ? dateOf(bounds[k], bounds[k + 1], "end") : undefined))
     if (windows.length > 1)
         logger.info(`${api.name}: ${windows.length} requests of at most ${maxWindow} ms (maxWindow)`)
     return { lastRecordDate: state?.lastEnd || lastRecord ? from : undefined, mustPull: true, windows, ends: bounds.slice(1) }
+}
+
+// The date params of one request: start and end (undefined: not sent), with startDatePrefix / endDatePrefix before
+// them if set (e.g. "ge" / "lt" for a FHIR server: _lastUpdated=ge<start>&_lastUpdated=lt<end>). The same param for
+// start and end (startDateParam == endDateParam): both values, in this order, under it (sent as a repeated param,
+// see requestParams).
+function dateParamsOf(params, start, end) {
+    const prefixed = (value, prefix) => typeof prefix == "string" && prefix ? prefix + value : value
+    const window = {}
+    if (start !== undefined)
+        window[params.startDateParam] = prefixed(start, params.startDatePrefix)
+    if (end !== undefined) {
+        const value = prefixed(end, params.endDatePrefix)
+        window[params.endDateParam] = params.endDateParam === params.startDateParam && start !== undefined ? [window[params.startDateParam], value] : value
+    }
+    return window
+}
+
+// The axios options for the query params of an API request. An incremental API using the same param for start and
+// end: a param with several values (an array) repeated as it is, p=a&p=b (axios would send p[]=a&p[]=b)
+function requestParams(api, params) {
+    const dates = api.incrementalParams
+    if (api.incremental && dates?.startDateParam && dates.startDateParam === dates.endDateParam)
+        return { params, paramsSerializer: { indexes: null } }
+    return { params }
 }
 
 function setStartOffset(type) {
@@ -289,8 +312,9 @@ function getValueFromParam(obj, param) {//item[api.batch.param]
 // Incremental polls: every record (an object, or each object of an array) gets the dates of the request that returned
 // it - the incrementalParams.startDateParam / endDateParam keys, with the values sent as query params - unless it
 // already has those keys. A date not sent (e.g. no start date on a first poll without startDateValue) is not added.
+// The same param for start and end: both values (an array, as sent).
 function addRequestDates(items, api, params) {
-    const keys = [api.incrementalParams?.startDateParam, api.incrementalParams?.endDateParam]
+    const keys = [...new Set([api.incrementalParams?.startDateParam, api.incrementalParams?.endDateParam])]
         .filter(key => key && params?.[key] !== undefined)
     for (const item of items)
         if (item && typeof item === "object" && !Array.isArray(item))
@@ -314,7 +338,7 @@ async function pollWindow(api, url, headers, window, { currentDate, collector, l
     const params = { ...api.queryParams, ...window }
     let response
     try {
-        response = await apiRequest(api, headers, headers => axios.get(url, { headers, params }))
+        response = await dataRequest(api, headers, headers => axios.get(url, { headers, ...requestParams(api, params) }))
     }
     catch (error) {
         if (!isNotFound(error))
@@ -438,6 +462,39 @@ async function apiRequest(api, headers, send) {
     }
 }
 
+// A FHIR searchset Bundle holds every record asked: as many entries as its total (no total: nothing to check)
+function fhirComplete(response) {
+    const bundle = response?.data
+    if (!bundle || typeof bundle != "object" || !Number.isFinite(Number(bundle.total)))
+        return true
+    return (Array.isArray(bundle.entry) ? bundle.entry.length : 0) >= Number(bundle.total)
+}
+
+// How an answer of the API is checked: api.completeAnswer (response => boolean), else, for a FHIR API (api.fhir:
+// true) not paginated, the total of its Bundle; none: not checked
+function completenessOf(api) {
+    if (typeof api.completeAnswer == "function")
+        return api.completeAnswer
+    if (api.fhir === true && !api.pagination)
+        return fhirComplete
+}
+
+// A request of the records of an API (not the batch list), with apiRequest, checked by completenessOf: e.g. a FHIR
+// server without paging (no "next" link, _offset ignored) answers the first _count entries of a bigger total. Not
+// complete: an error and nothing of that answer stored (no holes): an incremental poll stops at that window (pending
+// pages of it dropped, the next poll asks it again), a non incremental one keeps the records already stored.
+async function dataRequest(api, headers, send) {
+    const response = await apiRequest(api, headers, send)
+    const complete = completenessOf(api)
+    if (complete && !complete(response)) {
+        const data = response?.data
+        const received = Array.isArray(data) ? data.length : Array.isArray(data?.entry) ? data.entry.length : undefined
+        const counts = data?.total !== undefined ? ` (total ${data.total}, received ${received ?? 0})` : ""
+        throw new Error(`${api.name} API: incomplete answer${counts}, nothing stored: ask fewer records per request (a shorter maxWindow, a bigger _count) or enable paging on the server`)
+    }
+    return response
+}
+
 // One poll of `apis` (default: every API of apiConnectorConfig.apiUrls; utils/resetIncremental.js passes some)
 async function pollAPI(apis = config.apiConnectorConfig.apiUrls) {
     if (locks.polling || locks.rebuilding) {
@@ -476,7 +533,7 @@ async function pollAPI(apis = config.apiConnectorConfig.apiUrls) {
                             continue
                         }
                         const collector = createCollector(batchUrl, "api")
-                        const response = await apiRequest(api, headers, headers => axios.get(batchUrl, { headers }))
+                        const response = await dataRequest(api, headers, headers => axios.get(batchUrl, { headers }))
                         logger.info("api ", batchUrl, "called with ", {
                             headers
                         }, { response: response?.data?.length || response.data || "no response" })
@@ -525,7 +582,7 @@ async function pollAPI(apis = config.apiConnectorConfig.apiUrls) {
                                 headers
                             })
                             try {
-                                response = await apiRequest(api, headers, headers => axios.get(api.url, { headers, params: queryParams }))
+                                response = await dataRequest(api, headers, headers => axios.get(api.url, { headers, ...requestParams(api, queryParams) }))
                             }
                             catch (error) {
                                 if (!api.incremental || !isNotFound(error))
@@ -592,7 +649,7 @@ async function pollAPI(apis = config.apiConnectorConfig.apiUrls) {
                 }
                 else {
                     const collector = createCollector(api.url, "api")
-                    const response = await apiRequest(api, headers, headers => api.method?.toLowerCase() === "post" ? axios.post(api.url, api.body, { headers }) : axios.get(api.url, { headers }))
+                    const response = await dataRequest(api, headers, headers => api.method?.toLowerCase() === "post" ? axios.post(api.url, api.body, { headers }) : axios.get(api.url, { headers }))
                     logger.info("api ", api.url, "called with ", {
                         headers
                     }, { response: response?.data?.length || response.data || "no response" })
@@ -650,4 +707,4 @@ async function getToken(url, requestType, credentials, authProfile, body, header
 pollAPI()
 setInterval(pollAPI, config.apiConnectorConfig.pollInterval)
 
-module.exports = { pollAPI, prepareIncremental }
+module.exports = { pollAPI, prepareIncremental, requestParams, fhirComplete }
