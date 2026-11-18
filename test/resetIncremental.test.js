@@ -81,17 +81,22 @@ describe("resetIncremental", () => {
     test("dry run: only the counts", async () => {
         fake = fakePagedApi([])
         const result = await reset.resetIncremental({ dryRun: true })
-        assert.deepEqual(result, { dryRun: true, apis: [{ name: "Incremental", url: INCR, records: { mongo: 3, postgres: 3 } }] })
+        // none named: every API, incremental or not
+        assert.deepEqual(result, { dryRun: true, apis: [
+            { name: "Incremental", url: INCR, incremental: true, records: { mongo: 3, postgres: 3 } },
+            { name: "Plain", url: PLAIN, incremental: false, records: { mongo: 1, postgres: 1 } }
+        ] })
         assert.equal((await db.docs(Source, { source: INCR })).length, 3)
         assert.deepEqual(fake.requests, [])
     })
 
-    test("only the APIs named; an unknown or not incremental name: an error, nothing deleted", async () => {
+    test("only the APIs named, incremental or not; none: every incremental one; an unknown name: an error, nothing deleted", async () => {
         config.apiConnectorConfig.apiUrls = [incremental(), incremental({ name: "Other", url: "https://api.example/other" }), plain]
         assert.deepEqual(reset.selectApis(["Other"]).map(api => api.name), ["Other"])
+        assert.deepEqual(reset.selectApis(["Plain"]).map(api => api.name), ["Plain"])
         assert.deepEqual(reset.selectApis([]).map(api => api.name), ["Incremental", "Other"])
-        await assert.rejects(reset.resetIncremental({ names: ["Plain"], pollAPI }), /Not incremental APIs.*Plain/)
-        await assert.rejects(reset.resetIncremental({ names: ["Nope"], pollAPI }), /Nope/)
+        assert.deepEqual(reset.selectApis([], { everyIfNone: true }).map(api => api.name), ["Incremental", "Other", "Plain"])
+        await assert.rejects(reset.resetIncremental({ names: ["Nope"], pollAPI }), /Unknown APIs.*Nope/)
         assert.equal((await db.docs(Source, { source: INCR })).length, 3)
     })
 
@@ -117,6 +122,17 @@ describe("resetIncremental", () => {
         assert.ok(log.every(entry => entry.id && entry.startedAt && entry.finishedAt))
         await load("api/models/IncrementalResetLog.js").collection.insertOne({ startedAt: new Date(), by: "carl", apis: ["Incremental"], outcome: "running" })
         assert.equal((await reset.listResets({ limit: 1 }))[0].outcome, "interrupted")
+    })
+
+    test("a non incremental API: its records deleted and its whole answer stored again; the others untouched", async () => {
+        fake = fakePagedApi([[{ id: 7, v: "fresh" }, { id: 8, v: "fresh" }]])
+        const { apis } = await reset.resetIncremental({ names: ["Plain"], pollAPI })
+        assert.deepEqual(apis.map(api => [api.name, api.incremental, api.before, api.after]),
+            [["Plain", false, { mongo: 1, postgres: 1 }, { mongo: 2, postgres: 2 }]])
+        assert.deepEqual((await db.docs(Source, { source: PLAIN })).map(doc => doc.v), ["fresh", "fresh"])
+        assert.deepEqual(await pgOf(PLAIN), [7, 8])
+        assert.equal((await db.docs(Source, { source: INCR })).length, 3)
+        assert.equal((await reset.listResets())[0].apis[0], "Plain")
     })
 
     test("not paginated: polled again in windows too", async () => {
@@ -158,7 +174,7 @@ describe("resetIncremental of a batch API (url with {batch})", () => {
 
     test("dry run: the records of all the elements", async () => {
         const result = await reset.resetIncremental({ dryRun: true, names: ["Stations"] })
-        assert.deepEqual(result.apis, [{ name: "Stations", url: batchApi.url, records: { mongo: 4, postgres: 4 } }])
+        assert.deepEqual(result.apis, [{ name: "Stations", url: batchApi.url, incremental: true, records: { mongo: 4, postgres: 4 } }])
         assert.deepEqual(requests, [])
     })
 

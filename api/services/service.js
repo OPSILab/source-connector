@@ -280,7 +280,9 @@ async function executeRequest(req, res) {
       logger.info(`Entity ${id} not found in database, mapping...`)
     }
     if (!mustDownload && !mustUpdate) {
-      logger.info(`Entity ${id} is up to date, skipping...`)
+      logger.info(existingEntity
+        ? `Entity ${id} is up to date, skipping...`
+        : `Entity ${id} matches skippingParams (new distributions with these values are not synchronized), skipping...`)
       continue
     }
     let mapID =

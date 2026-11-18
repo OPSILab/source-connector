@@ -183,8 +183,11 @@ describe("POST /incremental/reset", () => {
         assert.ok(resetCalls.every(call => typeof call.pollAPI == "function"))
     })
 
-    test("400 for a name that is not an incremental API; 409 while busy or without apiConnector", async () => {
-        assert.equal((await resetPost("/incremental/reset?name=Plain")).status, 400)
+    test("a non incremental API named: 202; an unknown name: 400; 409 while busy or without apiConnector", async () => {
+        const res = await resetPost("/incremental/reset?name=Plain")
+        assert.deepEqual([res.status, (await res.json()).apis], [202, ["Plain"]])
+        assert.equal((await resetPost("/incremental/reset?name=Nope")).status, 400)
+        resetCalls.length = 0
         locks.polling = true
         assert.equal((await resetPost("/incremental/reset")).status, 409)
         locks.polling = false

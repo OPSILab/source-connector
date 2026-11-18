@@ -141,6 +141,41 @@ function requestParams(api, params) {
     return { params }
 }
 
+// pagination.condition: is there another page? Asked with the answer as the API gave it (e.g. an object
+// { data, meta: { has_more } }: response => response.data.meta?.has_more) and, for an answer that is not a list, also as
+// a list of it (response.data[0]...: how the conditions saw it before, e.g. response => response.data[0]?.truncated).
+// Another page when either says so; a condition failing on both shapes: its error.
+function morePages(api, response, answered) {
+    if (Array.isArray(answered) || answered === undefined || answered === null)
+        return !!api.pagination.condition({ ...response, data: answered })
+    let failure
+    for (const data of [answered, [answered]])
+        try {
+            if (api.pagination.condition({ ...response, data }))
+                return true
+            failure = null
+        }
+        catch (error) {
+            if (failure === undefined)
+                failure = error
+        }
+    if (failure)
+        throw failure
+    return false
+}
+
+// The offset param of the next page (pagination.offsetIncrement): "limit" (default, as before) + the number of records
+// of a page, for an offset counted in records (offset=0, 1000, 2000...); "index" + 1, for a page number (page=1, 2,
+// 3..., with offsetValue.startFrom: 1)
+function nextOffset(api, offset) {
+    const increment = api.pagination.offsetIncrement
+    if (increment === "index")
+        return Number(offset) + 1
+    if (increment !== undefined && increment !== "limit")
+        logger.warn(`${api.name}: pagination.offsetIncrement "${increment}" unknown ("limit" or "index"), by limit`)
+    return offset + api.pagination.limit
+}
+
 function setStartOffset(type) {
     if (type == "RFC 3339")
         return "1970-01-01T00:00:00Z"
@@ -575,7 +610,7 @@ async function pollAPI(apis = config.apiConnectorConfig.apiUrls) {
                         // (a cursor like "since") starts from the window
                         queryParams[api.pagination.offsetParam] = startOffset
                         Object.assign(queryParams, window)
-                        let firstPage = true, notFound = false
+                        let firstPage = true, notFound = false, answered
                         do {
                             logger.info(`Polling ${api.name} API with offset ${queryParams[api.pagination.offsetParam]}...`)
                             logger.info("api ", api.url, "called with ", {
@@ -593,6 +628,7 @@ async function pollAPI(apis = config.apiConnectorConfig.apiUrls) {
                                 break
                             }
                             firstPage = false
+                            answered = response.data // as the API answered it, for pagination.condition
                             logger.info(`Data from ${api.name} API:`, response.data?.length)
                             if (response.data) {
                                 if (!Array.isArray(response.data))
@@ -617,11 +653,11 @@ async function pollAPI(apis = config.apiConnectorConfig.apiUrls) {
                                     else
                                         queryParams[api.pagination.offsetParam] = response.data[0]?.[api.pagination.offsetValue.value]
                                 else
-                                    queryParams[api.pagination.offsetParam] += api.pagination.limit
+                                    queryParams[api.pagination.offsetParam] = nextOffset(api, queryParams[api.pagination.offsetParam])
                             }
                             else
                                 logger.info("No sources to insert")
-                        } while (api.pagination.condition(response));
+                        } while (morePages(api, response, answered));
                         if (!api.incremental)
                             await storeSnapshot(api, api.url, snapshotItems, { collector, currentDate })
                         // the window is done: its records are no longer pending, the next poll starts after it

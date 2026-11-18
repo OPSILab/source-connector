@@ -1,8 +1,9 @@
-// Starts the incremental APIs again from scratch (e.g. to get rid of duplicated records): for each incremental API of
-// apiConnectorConfig.apiUrls (or the ones named), its records are deleted - MongoDB collection, PostgreSQL table,
+// Starts APIs again from scratch (e.g. to get rid of duplicated or incomplete records): for each incremental API of
+// apiConnectorConfig.apiUrls, or the APIs named (incremental or not), its records are deleted - MongoDB collection, PostgreSQL table,
 // keys / values / entries refs, the pending poll references (utils/pollStatus.js), the state of its polls (end of the
 // last window stored, windows answered 404: utils/incrementalState.js) - and the API is polled again at
-// once, as the first time: from startDateValue, in maxWindow windows, every page (inputConnectors/apiConnector.js).
+// once, as the first time: from startDateValue, in maxWindow windows, every page (inputConnectors/apiConnector.js); a
+// non incremental API: every page of its answer, all of it stored again.
 // Used by POST /api/incremental/reset and by scripts/resetIncrementalApis.js.
 //
 // The shared lock (utils/jobLocks.js): refused while a poll or a rebuild runs; while deleting, the scheduled polls
@@ -24,14 +25,15 @@ const mongoose = require("mongoose")
 
 let status = { running: false }
 
-// The incremental APIs to reset: all of them, or those named (an unknown or not incremental name: an error)
-function selectApis(names) {
-    const apis = (config.apiConnectorConfig?.apiUrls || []).filter(api => api?.incremental && api.url)
+// The APIs to reset: those named, incremental or not (an unknown name: an error); none named: every incremental API
+// (everyIfNone: every API, incremental or not, e.g. the list of a dry run)
+function selectApis(names, { everyIfNone = false } = {}) {
+    const apis = (config.apiConnectorConfig?.apiUrls || []).filter(api => api?.url)
     if (!names?.length)
-        return apis
+        return everyIfNone ? apis : apis.filter(api => api.incremental)
     const unknown = names.filter(name => !apis.some(api => api.name == name))
     if (unknown.length)
-        throw Object.assign(new Error(`Not incremental APIs of apiConnectorConfig.apiUrls: ${unknown.join(", ")} (incremental: ${apis.map(api => api.name).join(", ") || "none"})`), { code: "INVALID" })
+        throw Object.assign(new Error(`Unknown APIs of apiConnectorConfig.apiUrls: ${unknown.join(", ")} (APIs: ${apis.map(api => api.name).join(", ") || "none"})`), { code: "INVALID" })
     return apis.filter(api => names.includes(api.name))
 }
 
@@ -92,14 +94,14 @@ async function writeLog(action) {
 }
 
 // names: API names (none: every incremental API). pollAPI: apiConnector's (it polls the APIs it is given).
-// dryRun: only the counts, nothing deleted nor polled. by: who asked (logged).
-// Answer { apis: [{ name, url, before: { mongo, postgres }, after }] }
+// dryRun: only the counts, nothing deleted nor polled (none named: every API, incremental or not). by: who asked (logged).
+// Answer { apis: [{ name, url, incremental, before: { mongo, postgres }, after }] }
 async function resetIncremental({ names, pollAPI, dryRun = false, by } = {}) {
-    const apis = selectApis(names)
+    const apis = selectApis(names, { everyIfNone: dryRun })
     if (dryRun) {
         const result = []
         for (const api of apis)
-            result.push({ name: api.name, url: api.url, records: await countRecords(api) })
+            result.push({ name: api.name, url: api.url, incremental: !!api.incremental, records: await countRecords(api) })
         return { dryRun: true, apis: result }
     }
     if (typeof pollAPI != "function")
@@ -127,7 +129,7 @@ async function resetIncremental({ names, pollAPI, dryRun = false, by } = {}) {
             }
             await incrementalState.clear(origins)
             logger.info(`${api.name}: records deleted (MongoDB ${before.mongo ?? "-"}, PostgreSQL ${before.postgres ?? "-"}${api.batch ? `, ${origins.length} elements` : ""}), polled again from the start`)
-            result.push({ name: api.name, url: api.url, before, ...(api.batch ? { elements: origins.length } : {}) })
+            result.push({ name: api.name, url: api.url, incremental: !!api.incremental, before, ...(api.batch ? { elements: origins.length } : {}) })
         }
     }
     catch (error) {
@@ -146,7 +148,7 @@ async function resetIncremental({ names, pollAPI, dryRun = false, by } = {}) {
             entry.after = await countRecords(apis[i])
         status = { ...status, running: false, phase: "done", finishedAt: new Date(), result }
         await finish({ outcome: "done", result })
-        logger.info("Incremental APIs reset", result)
+        logger.info("APIs reset", result)
         return { apis: result }
     }
     catch (error) {

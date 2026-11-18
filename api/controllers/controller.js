@@ -77,8 +77,9 @@ module.exports = {
         res.send(rebuild.getRebuildStatus())
     },
 
-    // POST /incremental/reset?name=<api name>&name=... (also { names: [...] } in the JSON body; none: every incremental
-    // API), &dryRun=true: only the counts. Deletes the records of those APIs and polls them again from the start
+    // POST /incremental/reset?name=<api name>&name=... (also { names: [...] } in the JSON body): any API, incremental or
+    // not; none: every incremental API. &dryRun=true: only the counts (none named: every API, with `incremental`).
+    // Deletes the records of those APIs and polls them again from the start
     // (utils/resetIncremental.js), in background: 202; progress/result via GET /incremental/reset, every reset in
     // GET /incremental/reset/log. Besides the login, the management password (X-Management-Secret header, config
     // managementSecret; the dry run does not need it): 403 without it.
@@ -89,7 +90,7 @@ module.exports = {
         const dryRun = pick("dryRun") === true || pick("dryRun") === "true"
         let apis
         try {
-            apis = resetIncremental.selectApis(names)
+            apis = resetIncremental.selectApis(names, { everyIfNone: dryRun })
         }
         catch (error) {
             return res.status(400).send(error.message)
@@ -106,7 +107,7 @@ module.exports = {
         if (locks.polling)
             return res.status(409).send("An API poll is running, retry when it has finished")
         const { pollAPI } = require("../../inputConnectors/apiConnector") // already loaded by index.js
-        logger.info("Reset of the incremental APIs requested", apis.map(api => api.name))
+        logger.info("Reset of the APIs requested", apis.map(api => api.name))
         resetIncremental.resetIncremental({ names, pollAPI, by: managementSecret.requester(req) }).catch(() => { }) // outcome in the status (and the log)
         res.status(202).send({ started: true, apis: apis.map(api => api.name) })
     },
