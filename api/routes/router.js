@@ -17,5 +17,12 @@ router.get(encodeURI("/rebuild"), auth, controller.rebuildStatus)
 router.post(encodeURI("/incremental/reset"), auth, controller.resetIncremental)
 router.get(encodeURI("/incremental/reset"), auth, controller.resetIncrementalStatus)
 router.get(encodeURI("/incremental/reset/log"), auth, controller.resetIncrementalLog)
+// Backups of the apiConnector data (utils/apiBackups.js): list and log for the logged users; backup, restore and
+// delete with the management password too
+router.get(encodeURI("/backups"), auth, controller.listBackups)
+router.get(encodeURI("/backups/log"), auth, controller.backupLog)
+router.post(encodeURI("/backups"), auth, controller.createBackup)
+router.post(encodeURI("/backups/:id/restore"), auth, controller.restoreBackup)
+router.delete(encodeURI("/backups/:id"), auth, controller.deleteBackup)
 
 module.exports = router

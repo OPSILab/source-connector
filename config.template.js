@@ -82,6 +82,13 @@ module.exports = {
   // (POST /api/incremental/reset, the frontend sends it in X-Management-Secret). Empty: those operations are disabled.
   // Set the same value as managementSecret in the config of the Query-Engine (deletion of cache backups).
   managementSecret: "",
+  // Backups of the apiConnector data (POST /api/backups, utils/apiBackups.js): in a MongoDB database of their own,
+  // mongoDb (empty: "<main database>_backups"; MongoDB 4.4 or later); maxBackups: the most kept (the oldest deleted;
+  // 0: no limit). Backup, restore and delete need managementSecret.
+  apiBackup: {
+    mongoDb: "",
+    maxBackups: 10
+  },
   statusLog: {
     enabled: true,
     maxDataSize: 10000,

@@ -1,5 +1,6 @@
 // managementSecret (config): the password that the destructive operations require besides the login - here the
-// reset of the incremental APIs (POST /incremental/reset; its dry run does not need it). The Query-Engine asks the
+// reset of the APIs (POST /incremental/reset; its dry run does not need it) and the backups of the API data (backup,
+// restore, delete: utils/apiBackups.js). The Query-Engine asks the
 // same for deleting cache backups: set the same value in its config. Sent in the X-Management-Secret header, compared
 // in constant time; not configured (empty): those operations are disabled.
 const crypto = require("crypto")

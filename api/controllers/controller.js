@@ -6,6 +6,21 @@ const config = require("../../config")
 const locks = require("../../utils/jobLocks")
 const managementSecret = require("../../utils/managementSecret")
 const publicConfig = require("../../utils/publicConfig")
+const apiBackups = require("../../utils/apiBackups")
+
+// The HTTP status of an error of utils/apiBackups.js
+const backupErrorStatus = error => ({ BUSY: 409, NOT_FOUND: 404, INVALID: 400 })[error?.code] || 500
+
+// The checks of a backup action before it starts: the management password, apiConnector enabled, nothing running
+function backupRefusal(req) {
+    const refused = managementSecret.refusal(req)
+    if (refused)
+        return [403, refused]
+    if (locks.rebuilding)
+        return [409, "A rebuild, a reset or a backup is already running"]
+    if (locks.polling)
+        return [409, "An API poll is running, retry when it has finished"]
+}
 
 module.exports = {
 
@@ -114,6 +129,74 @@ module.exports = {
 
     resetIncrementalStatus: async (req, res) => {
         res.send(resetIncremental.getResetStatus())
+    },
+
+    // GET /backups: the backups of the apiConnector data (newest first), the action running or the last one, the
+    // limit of backups kept and whether the management password is configured (backup / restore / delete need it)
+    listBackups: async (req, res) => {
+        try {
+            res.send({ items: await apiBackups.listBackups(), status: apiBackups.getBackupStatus(), maxBackups: apiBackups.maxBackups(), secretConfigured: managementSecret.configured() })
+        }
+        catch (error) {
+            logger.error(error)
+            res.status(backupErrorStatus(error)).send(error.message || "The backups could not be read")
+        }
+    },
+
+    // GET /backups/log?limit=: every backup, restore and delete, newest first (default the latest 100)
+    backupLog: async (req, res) => {
+        const limit = req.query?.limit === undefined ? 100 : Number(req.query.limit)
+        if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
+            return res.status(400).send("limit must be 1-1000")
+        try {
+            res.send({ items: await apiBackups.listLog({ limit }) })
+        }
+        catch (error) {
+            logger.error(error)
+            res.status(500).send("The log of the backups could not be read")
+        }
+    },
+
+    // POST /backups { label? }: a backup of the apiConnector data, in background: 202; progress via GET /backups
+    createBackup: async (req, res) => {
+        const refused = backupRefusal(req)
+        if (refused)
+            return res.status(refused[0]).send(refused[1])
+        const label = typeof req.body?.label == "string" ? req.body.label.trim() : undefined
+        apiBackups.createBackup({ label: label || undefined, by: managementSecret.requester(req) }).catch(() => { }) // outcome in the status and the log
+        res.status(202).send({ started: true })
+    },
+
+    // POST /backups/:id/restore: a backup of the data as they are now, then backup :id in their place (keys / values /
+    // entries and the PostgreSQL mirror rebuilt), in background: 202
+    restoreBackup: async (req, res) => {
+        const refused = backupRefusal(req)
+        if (refused)
+            return res.status(refused[0]).send(refused[1])
+        try {
+            await apiBackups.listBackups().then(items => {
+                if (!items.some(item => item.id === req.params.id))
+                    throw Object.assign(new Error(`No API backup ${req.params.id}`), { code: "NOT_FOUND" })
+            })
+        }
+        catch (error) {
+            return res.status(backupErrorStatus(error)).send(error.message)
+        }
+        apiBackups.restoreBackup({ id: req.params.id, by: managementSecret.requester(req) }).catch(() => { })
+        res.status(202).send({ started: true, id: req.params.id })
+    },
+
+    // DELETE /backups/:id
+    deleteBackup: async (req, res) => {
+        const refused = backupRefusal(req)
+        if (refused)
+            return res.status(refused[0]).send(refused[1])
+        try {
+            res.send(await apiBackups.deleteBackup({ id: req.params.id, by: managementSecret.requester(req) }))
+        }
+        catch (error) {
+            res.status(backupErrorStatus(error)).send(error.message)
+        }
     },
 
     // GET /incremental/reset/log?limit=: the resets done, newest first (default the latest 100), and whether the
