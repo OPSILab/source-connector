@@ -12,6 +12,7 @@ const axios = require("axios")
 const logger = require("percocologger")
 const config = require("../config")
 const StatusLog = require("../api/models/StatusLog")
+const { hideFields, hiddenPaths } = require("./hideFields")
 
 const DEFAULT_MAX_DATA_SIZE = 10000
 const pending = new Set() // saves still running (settled() waits for them: tests)
@@ -53,7 +54,7 @@ function asText(value, max) {
 const withoutQuery = url => typeof url == "string" ? url.split("?")[0] : undefined
 const escapeRegex = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
-// The name of the configured API a request belongs to (its url, batch url or values, token url), if any
+// The configured API a request belongs to (its url, batch url or values, token url), if any
 function apiOf(url) {
     const base = withoutQuery(url)
     if (!base)
@@ -61,11 +62,11 @@ function apiOf(url) {
     for (const api of config.apiConnectorConfig?.apiUrls || []) {
         const apiBase = withoutQuery(api.url)
         if (apiBase == base || withoutQuery(api.batch?.from) == base)
-            return api.name
+            return api
         if (apiBase?.includes("{batch}") && new RegExp("^" + apiBase.split("{batch}").map(escapeRegex).join(".+") + "$").test(base))
-            return api.name
+            return api
         if (Object.values(api.headers || {}).some(header => withoutQuery(header?.authUrl?.value) == base))
-            return api.name
+            return api
     }
     return undefined
 }
@@ -85,13 +86,29 @@ function fullUrl(request) {
     }
 }
 
+// The answer of an API with hideFields as it may be saved: those fields replaced by their pseudonyms (a copy: the
+// caller gets the answer as it came, and hides them itself before storing); not JSON or no hideFieldsSecret: not saved
+function savedData(api, data) {
+    if (!api || !hiddenPaths(api).length || data === undefined || data === null)
+        return data
+    if (typeof data == "string" || Buffer.isBuffer(data) || data instanceof ArrayBuffer)
+        return "[not saved: hideFields on an answer that is not JSON]"
+    try {
+        return hideFields(structuredClone(data), api, config.hideFieldsSecret)
+    }
+    catch (error) {
+        return `[not saved: ${error.message}]`
+    }
+}
+
 // The statuslog document of a request: a failed one (an axios error) or a successful one (an axios response)
 function record(error, success) {
     const request = (success || error).config || {}
     const response = success || error.response
     const { maxDataSize, successRetentionDays } = settings()
+    const api = apiOf(request.url)
     const body = asText(request.data, maxDataSize)
-    const data = response ? asText(response.data, maxDataSize) : {}
+    const data = response ? asText(savedData(api, response.data), maxDataSize) : {}
     let host
     try {
         host = new URL(fullUrl(request)).host
@@ -101,7 +118,7 @@ function record(error, success) {
     const doc = {
         createdAt,
         outcome: success ? "success" : "error",
-        api: apiOf(request.url),
+        api: api?.name,
         host,
         method: request.method?.toUpperCase(),
         url: request.url,

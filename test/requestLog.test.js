@@ -18,6 +18,8 @@ before(async () => {
         res.setHeader("Content-Type", "application/json")
         if (url.pathname == "/ok")
             return res.end(JSON.stringify({ ok: true }))
+        if (url.pathname == "/fhir")
+            return res.end(JSON.stringify({ resourceType: "Bundle", entry: [{ resource: { participant: [{ actor: { display: "Mario Rossi" } }] } }] }))
         if (url.pathname == "/big") {
             res.statusCode = 502
             return res.end(JSON.stringify({ message: "x".repeat(100) }))
@@ -141,5 +143,21 @@ describe("statuslog", () => {
         await axios.get(base + "/item/42").catch(() => { })
         await axios.get(base + "/ids").catch(() => { })
         assert.deepEqual((await docs()).map(doc => doc.api), ["Batch", "Batch"])
+    })
+
+    test("an API with hideFields: its answer saved with the pseudonyms (the caller gets it as it came); no secret: not saved", async () => {
+        const { pseudonym } = load("utils/hideFields.js")
+        config.apiConnectorConfig.apiUrls = [{ name: "Appointments", url: base + "/fhir", hideFields: ["entry.resource.participant.actor.display"] }]
+        config.hideFieldsSecret = "key"
+        const response = await axios.get(base + "/fhir")
+        assert.equal(response.data.entry[0].resource.participant[0].actor.display, "Mario Rossi")
+        let [doc] = await docs()
+        assert.ok(!doc.data.includes("Mario Rossi"))
+        assert.ok(doc.data.includes(pseudonym("Mario Rossi", "key")))
+        await StatusLog.collection.deleteMany({})
+        config.hideFieldsSecret = ""
+        await axios.get(base + "/fhir")
+        ;[doc] = await docs()
+        assert.match(doc.data, /^\[not saved: Appointments: hideFields needs hideFieldsSecret/)
     })
 })

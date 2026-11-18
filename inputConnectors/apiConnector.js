@@ -8,6 +8,7 @@ const locks = require('../utils/jobLocks')
 const pollStatus = require('../utils/pollStatus')
 const incrementalState = require('../utils/incrementalState')
 const snapshot = require('../utils/snapshotRecords')
+const { hideFields, hiddenPaths } = require('../utils/hideFields')
 let tokens = {}
 
 const DAY = 1000 * 60 * 60 * 24
@@ -518,8 +519,15 @@ function completenessOf(api) {
 // server without paging (no "next" link, _offset ignored) answers the first _count entries of a bigger total. Not
 // complete: an error and nothing of that answer stored (no holes): an incremental poll stops at that window (pending
 // pages of it dropped, the next poll asks it again), a non incremental one keeps the records already stored.
+// The hideFields of the API are replaced by their pseudonyms here, before anything is stored (utils/hideFields.js): an
+// answer that is not JSON, or no hideFieldsSecret, is an error and nothing is stored.
 async function dataRequest(api, headers, send) {
     const response = await apiRequest(api, headers, send)
+    if (hiddenPaths(api).length) {
+        if (typeof response.data == "string" || Buffer.isBuffer(response.data))
+            throw new Error(`${api.name} API: the answer is not JSON, hideFields cannot be applied: nothing stored`)
+        hideFields(response.data, api, config.hideFieldsSecret)
+    }
     const complete = completenessOf(api)
     if (complete && !complete(response)) {
         const data = response?.data

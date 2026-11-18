@@ -85,6 +85,12 @@ module.exports = {
   // Backups of the apiConnector data (POST /api/backups, utils/apiBackups.js): in a MongoDB database of their own,
   // mongoDb (empty: "<main database>_backups"; MongoDB 4.4 or later); maxBackups: the most kept (the oldest deleted;
   // 0: no limit). Backup, restore and delete need managementSecret.
+  // The key of the pseudonyms of the hideFields of the APIs (apiConnectorConfig.apiUrls[].hideFields, e.g.
+  // ["entry.resource.participant.actor.display"]): HMAC-SHA256, the same value gives the same pseudonym. Long and
+  // random; the same value in the config of the Query-Engine (its live Simple search). Changing it changes every
+  // pseudonym (the records stored before keep the old ones: reset those APIs). Empty: an API with hideFields is not
+  // stored (error).
+  hideFieldsSecret: "",
   apiBackup: {
     mongoDb: "",
     maxBackups: 10
