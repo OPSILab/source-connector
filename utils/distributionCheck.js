@@ -38,4 +38,43 @@ function changedFields(entity, stored) {
 
 const mustUpdate = (entity, stored) => changedFields(entity, stored).length > 0
 
-module.exports = { CHECKED_FIELDS, plainValue, fieldChanged, changedFields, mustUpdate }
+// orion.skippingParams: { <attribute>: [values] }. A value is the exact text of the attribute (case sensitive), a
+// regular expression (a RegExp in config.js), or a text "regex:<pattern>" (the pattern of a RegExp, e.g.
+// "regex:/sdmx/2\\.1/dataflow/" for every Eurostat metadata url). An invalid pattern never matches (warned once).
+const REGEX_PREFIX = "regex:"
+const compiled = new Map()
+function patternOf(text, warn) {
+    if (!compiled.has(text)) {
+        let regex = null
+        try {
+            regex = new RegExp(text.slice(REGEX_PREFIX.length))
+        }
+        catch (error) {
+            warn?.(`orion.skippingParams: invalid pattern ${JSON.stringify(text)} ignored (${error.message})`)
+        }
+        compiled.set(text, regex)
+    }
+    return compiled.get(text)
+}
+
+function matchesSkipping(value, item, warn) {
+    if (item instanceof RegExp)
+        return item.test(value)
+    if (typeof item == "string" && item.startsWith(REGEX_PREFIX))
+        return !!patternOf(item, warn)?.test(value)
+    return item == value
+}
+
+// The attribute of the entity matching orion.skippingParams (the entity is not synchronized when new), else undefined
+function skippingMatch(entity, skippingParams, warn) {
+    for (const [attribute, items] of Object.entries(skippingParams || {})) {
+        if (!Array.isArray(items))
+            continue
+        const value = plainValue(entity?.[attribute])
+        if (items.some(item => matchesSkipping(value, item, warn)))
+            return attribute
+    }
+    return undefined
+}
+
+module.exports = { CHECKED_FIELDS, plainValue, fieldChanged, changedFields, mustUpdate, skippingMatch }

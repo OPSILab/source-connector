@@ -92,3 +92,31 @@ describe("daily check (verifyLostSubscriptionOrion)", () => {
         stored = []
     })
 })
+
+describe("orion.skippingParams (skippingMatch)", () => {
+    const { skippingMatch } = load("utils/distributionCheck.js")
+    const META = "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/dataflow/ESTAT/tran_r_elvehst?references=descendants&detail=referencepartial&format=sdmx_2.1_generic&compressed=true"
+    const DATA = "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/tran_r_elvehst?format=sdmx_2.1_structured&compressed=true"
+    const ent = url => ({ id: "urn:x", accessUrl: { type: "Property", value: url } })
+
+    test("an exact value (as before), case sensitive", () => {
+        assert.equal(skippingMatch(ent(META), { accessUrl: [META] }), "accessUrl")
+        assert.equal(skippingMatch(ent(DATA), { accessUrl: [META] }), undefined)
+        assert.equal(skippingMatch(ent(META.toUpperCase()), { accessUrl: [META] }), undefined)
+    })
+
+    test('"regex:<pattern>" and a RegExp: every metadata url, never the data', () => {
+        for (const rule of ["regex:/sdmx/2\\.1/dataflow/", /\/sdmx\/2\.1\/dataflow\//]) {
+            assert.equal(skippingMatch(ent(META), { accessUrl: [rule] }), "accessUrl", String(rule))
+            assert.equal(skippingMatch(ent(DATA), { accessUrl: [rule] }), undefined, String(rule))
+        }
+    })
+
+    test("an invalid pattern never matches, warned; other attributes; no skippingParams", () => {
+        const warnings = []
+        assert.equal(skippingMatch(ent(META), { accessUrl: ["regex:(unclosed"] }, w => warnings.push(w)), undefined)
+        assert.match(warnings[0], /invalid pattern/)
+        assert.equal(skippingMatch({ format: { value: "XML" } }, { accessUrl: ["regex:."], format: ["XML"] }), "format")
+        assert.equal(skippingMatch(ent(META), undefined), undefined)
+    })
+})

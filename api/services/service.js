@@ -16,7 +16,7 @@ const { createQueue } = require("../../utils/requestQueue")
 // other records replaced by dataset url (utils/sourceRecords.js)
 const { upsertDatapoints, openDatapointsWriter } = require("../../utils/datapoints")
 const { sleep, verifyLostSubscriptionOrion, checkMustUpdateDistributionDcatAp, fastAndPartialOrionizeEntity } = require("../../utils/common")
-const { plainValue } = require("../../utils/distributionCheck")
+const { skippingMatch } = require("../../utils/distributionCheck")
 updateJWT()
   .then((token) => {
     logger.debug("Obtained Keycloak token:", token);
@@ -29,11 +29,9 @@ const path = require("path");
 let attrWithUrl = config.orion?.attrWithUrl || "datasetUrl";
 require("../../inputConnectors/orionConnector");
 
+// orion.skippingParams: exact values, or patterns (utils/distributionCheck.skippingMatch)
 function notContainsSkippingParams(ent) {
-  for (let skippingParam in config.orion.skippingParams)
-    if (config.orion.skippingParams[skippingParam].some(item => item == plainValue(ent[skippingParam])))
-      return false
-  return true
+  return skippingMatch(ent, config.orion.skippingParams, message => logger.warn(message)) === undefined
 }
 
 function extractValue(ent, attr, nestedAttr, defaultValue) {

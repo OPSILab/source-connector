@@ -58,10 +58,13 @@ module.exports = {
     // like `value` has hundreds of thousands of distinct values. They stay searchable, they are just not suggested
     // (the frontend says so). After a change: POST /api/rebuild?mode=entries&connector=orion.
     datapointsNotIndexed: ["value"],
+    // New Orion distributions not synchronized when one of these attributes matches one of the listed values: the exact
+    // text (case sensitive), "regex:<pattern>" or a RegExp. Distributions already stored keep being updated.
+    // "regex:/sdmx/2\\.1/dataflow/": every Eurostat metadata url (dataflow/ESTAT/...), present and future.
     skippingParams: {
       accessUrl: [
-        "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/dataflow/ESTAT/bd_hgnace_r?references=descendants&detail=referencepartial&format=sdmx_2.1_generic&compressed=true"
-      ]// New Orion distributions not synchronized when one of these attributes has one of the listed values (exact match, case sensitive). Distributions already stored keep being updated.
+        "regex:/sdmx/2\\.1/dataflow/"
+      ]
     }
   },
   logLevel: "info",
