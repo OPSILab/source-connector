@@ -182,4 +182,12 @@ describe("selfNotificationUrl (recovery check)", () => {
             "http://localhost:3005/sc/orion/subscribe/abc")
         assert.equal(url({ mapID: "", orion: {} }), "http://localhost:3000/api/orion/subscribe")
     })
+
+    test("sourceConnectorPort wins over port (one config.js for both services)", () => {
+        assert.equal(common.selfNotificationUrl({ port: 3000, sourceConnectorPort: 3002, orion: {} }), "http://localhost:3002/api/orion/subscribe")
+        assert.equal(common.sourceConnectorPort({ port: 3005 }), 3005)
+        assert.equal(common.sourceConnectorPort({ port: 3005, sourceConnectorPort: "3002" }), 3002)
+        assert.equal(common.sourceConnectorPort({ port: 3005, sourceConnectorPort: "" }), 3005)
+        assert.equal(common.sourceConnectorPort({ queryEnginePort: 3001 }), 3000)
+    })
 })

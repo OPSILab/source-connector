@@ -75,6 +75,10 @@ module.exports = {
   queryAllowedExtensions: ["csv", "json", "geojson"],
   parseCompatibilityMode: 0,
   port: 3000,
+  // One config.js for both services on the same machine: sourceConnectorPort is the port of the Source-Connector (it wins over port),
+  // queryEnginePort that of the other one. Not set: port.
+  // sourceConnectorPort: 3000,
+  // queryEnginePort: 3001,
   updateOwner: "later",
   writeLogsOnFile: true,
   // HTTP requests (url, query params, headers, body, status, response data, duration) saved in the MongoDB collection

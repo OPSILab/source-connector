@@ -7,7 +7,7 @@ mongoose.connect(config.mongo, { useNewUrlParser: true, useUnifiedTopology: true
     const express = require('express');
     const bodyParser = require('body-parser');
     const app = express();
-    const port = config.port;
+    const port = common.sourceConnectorPort(config); // sourceConnectorPort, else port
     const cors = require('cors');
     const logger = require('percocologger')
     logger.info(config.queryAllowedExtensions);

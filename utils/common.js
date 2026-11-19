@@ -150,6 +150,17 @@ function checkMustUpdateDistributionDcatAp(ent, existingEntity) {
   return changed.length > 0
 }
 
+// The port of the Source-Connector: sourceConnectorPort, else port (as before), else 3000. With its own key, one
+// config.js can serve both the Source-Connector and the Query-Engine (queryEnginePort) on the same machine.
+function sourceConnectorPort(cfg = config) {
+  for (const value of [cfg.sourceConnectorPort, cfg.port]) {
+    const port = Number(value)
+    if (value !== undefined && value !== null && value !== "" && Number.isInteger(port) && port > 0)
+      return port
+  }
+  return 3000
+}
+
 // Where the recovery check (verifyLostSubscriptionOrion) sends its notifications: this Source-Connector's own route,
 // open as Orion's (api/routes/router.js), with the mapID Orion uses - the segment after /orion/subscribe/ in
 // orion.notificationUrl - else config.mapID; none: the route without mapID (the entity's mapID, or none, applies).
@@ -160,7 +171,7 @@ function selfNotificationUrl(cfg = config) {
     mapID = match ? decodeURIComponent(match[1]) : undefined
   } catch { }
   mapID = mapID || cfg.mapID
-  const base = `http://localhost:${cfg.port || 3000}${cfg.basePath || "/api"}/orion/subscribe`
+  const base = `http://localhost:${sourceConnectorPort(cfg)}${cfg.basePath || "/api"}/orion/subscribe`
   return mapID ? `${base}/${encodeURIComponent(mapID)}` : base
 }
 
@@ -173,6 +184,8 @@ module.exports = {
   fastAndPartialOrionizeEntity,
 
   selfNotificationUrl,
+
+  sourceConnectorPort,
 
   async verifyLostSubscriptionOrion() {
     try {
